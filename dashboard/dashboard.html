@@ -1,0 +1,391 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python App Dashboard</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Fallback styles if Tailwind doesn't load */
+        .fallback-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .fallback-card { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; margin: 10px 0; }
+        .fallback-button { background: #3b82f6; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; margin: 5px; }
+        .fallback-button:hover { background: #2563eb; }
+        .fallback-button:disabled { background: #6b7280; cursor: not-allowed; }
+    </style>
+</head>
+<body style="margin: 0; background: linear-gradient(135deg, #1e293b, #7c3aed, #1e293b); min-height: 100vh; font-family: system-ui, -apple-system, sans-serif;">
+    <div id="root">
+        <!-- Loading fallback -->
+        <div style="display: flex; justify-content: center; align-items: center; height: 100vh; color: white;">
+            <div>Loading dashboard...</div>
+        </div>
+    </div>
+
+    <script type="text/babel">
+        const { useState, useEffect, createElement: h } = React;
+
+        // Simple icon components (fallback if Lucide doesn't load)
+        const PlayIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'currentColor' },
+            h('path', { d: 'M8 5v14l11-7z' })
+        );
+        
+        const StopIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'currentColor' },
+            h('rect', { x: 6, y: 6, width: 12, height: 12 })
+        );
+        
+        const RefreshIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+            h('path', { d: 'M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8' }),
+            h('path', { d: 'M21 3v5h-5' }),
+            h('path', { d: 'M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16' }),
+            h('path', { d: 'M3 21v-5h5' })
+        );
+        
+        const ServerIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+            h('rect', { x: 2, y: 3, width: 20, height: 4, rx: 1 }),
+            h('rect', { x: 2, y: 9, width: 20, height: 4, rx: 1 }),
+            h('rect', { x: 2, y: 15, width: 20, height: 4, rx: 1 }),
+            h('line', { x1: 6, y1: 5, x2: 6, y2: 5 }),
+            h('line', { x1: 6, y1: 11, x2: 6, y2: 11 }),
+            h('line', { x1: 6, y1: 17, x2: 6, y2: 17 })
+        );
+
+        const CheckIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+            h('path', { d: 'M9 12l2 2 4-4' }),
+            h('circle', { cx: 12, cy: 12, r: 10 })
+        );
+
+        const ClockIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+            h('circle', { cx: 12, cy: 12, r: 10 }),
+            h('polyline', { points: '12,6 12,12 16,14' })
+        );
+
+        const Dashboard = () => {
+            const [apps, setApps] = useState([]);
+            const [serverStatus, setServerStatus] = useState('disconnected');
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            const serverAddress = '192.168.1.227:8000';
+
+            const fetchAppsStatus = async () => {
+                try {
+                    const response = await fetch(`http://${serverAddress}/api/apps`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    const data = await response.json();
+                    setApps(data);
+                    setServerStatus('connected');
+                    setError(null);
+                } catch (err) {
+                    console.error('Failed to fetch apps:', err);
+                    setServerStatus('disconnected');
+                    setError(`Cannot connect to backend server at ${serverAddress}. Make sure it's running.`);
+                }
+            };
+
+            useEffect(() => {
+                fetchAppsStatus();
+                setLoading(false);
+                
+                const interval = setInterval(fetchAppsStatus, 5000);
+                return () => clearInterval(interval);
+            }, []);
+
+            const formatUptime = (seconds) => {
+                if (!seconds) return '00:00:00';
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                const secs = seconds % 60;
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            };
+
+            const handleAppAction = async (appId, action) => {
+                try {
+                    setApps(prevApps => 
+                        prevApps.map(app => 
+                            app.id === appId 
+                                ? { ...app, status: action === 'start' ? 'starting' : 'stopping' }
+                                : app
+                        )
+                    );
+
+                    const response = await fetch(`http://${serverAddress}/api/apps/${appId}/${action}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                    });
+
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        throw new Error(result.error || `Failed to ${action} app`);
+                    }
+
+                    setTimeout(fetchAppsStatus, 2000);
+                    
+                } catch (err) {
+                    console.error(`Failed to ${action} app:`, err);
+                    setError(`Failed to ${action} ${appId}: ${err.message}`);
+                    fetchAppsStatus();
+                }
+            };
+
+            const getStatusIcon = (status) => {
+                const className = "w-5 h-5";
+                const style = { 
+                    color: status === 'running' ? '#10b981' : 
+                           status === 'stopped' ? '#6b7280' : '#f59e0b' 
+                };
+                
+                if (status === 'running') return h(CheckIcon, { className, style });
+                if (status === 'starting' || status === 'stopping') {
+                    return h('div', { 
+                        className: className + ' animate-pulse',
+                        style: { ...style, animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
+                    }, '●');
+                }
+                return h(StopIcon, { className, style });
+            };
+
+            const getStatusColor = (status) => {
+                switch (status) {
+                    case 'running': return { background: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0' };
+                    case 'stopped': return { background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' };
+                    case 'starting':
+                    case 'stopping': return { background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' };
+                    default: return { background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' };
+                }
+            };
+
+            if (loading) {
+                return h('div', {
+                    className: "min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center"
+                }, h('div', { className: "text-white text-xl" }, 'Loading dashboard...'));
+            }
+
+            return h('div', { className: "min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900" },
+                h('div', { className: "container mx-auto px-6 py-8" },
+                    // Header
+                    h('div', { className: "mb-8" },
+                        h('div', { className: "flex items-center justify-between mb-6" },
+                            h('div', null,
+                                h('h1', { className: "text-4xl font-bold text-white mb-2" }, 'App Dashboard'),
+                                h('p', { className: "text-slate-300" }, 'Manage Python applications on your server')
+                            ),
+                            h('div', { className: "flex items-center space-x-4" },
+                                h('button', {
+                                    onClick: fetchAppsStatus,
+                                    className: "flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                                },
+                                    h(RefreshIcon, { className: "w-4 h-4" }),
+                                    h('span', null, 'Refresh')
+                                ),
+                                h('div', { className: "flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2" },
+                                    h(ServerIcon, { className: "w-5 h-5 text-blue-400" }),
+                                    h('span', { className: "text-white font-medium" }, '192.168.1.227'),
+                                    h('div', { 
+                                        className: `w-3 h-3 rounded-full ${serverStatus === 'connected' ? 'bg-green-400' : 'bg-red-400'}`,
+                                        style: { animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
+                                    })
+                                )
+                            )
+                        ),
+                        error && h('div', { 
+                            className: "bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-4",
+                            style: { background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }
+                        },
+                            h('p', { className: "text-red-400", style: { color: '#f87171' } }, `⚠️ ${error}`)
+                        )
+                    ),
+
+                    // App Cards
+                    h('div', { className: "grid grid-cols-1 lg:grid-cols-2 gap-6" },
+                        apps.map((app) =>
+                            h('div', {
+                                key: app.id,
+                                className: "bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 p-6 hover:bg-white/15 transition-all duration-300",
+                                style: { 
+                                    background: 'rgba(255, 255, 255, 0.1)', 
+                                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                                    borderRadius: '12px'
+                                }
+                            },
+                                h('div', { className: "flex items-start justify-between mb-4" },
+                                    h('div', { className: "flex items-center space-x-3" },
+                                        h('div', { 
+                                            className: "p-2 bg-blue-500/20 rounded-lg",
+                                            style: { background: 'rgba(59, 130, 246, 0.2)', borderRadius: '8px' }
+                                        },
+                                            h('div', { 
+                                                className: "w-6 h-6 text-blue-400",
+                                                style: { color: '#60a5fa', fontSize: '24px' }
+                                            }, '⚡')
+                                        ),
+                                        h('div', null,
+                                            h('h3', { className: "text-xl font-semibold text-white" }, app.name),
+                                            h('p', { className: "text-slate-300 text-sm", style: { color: '#cbd5e1' } }, app.description)
+                                        )
+                                    ),
+                                    h('div', { className: "flex items-center space-x-2" },
+                                        getStatusIcon(app.status),
+                                        h('span', {
+                                            className: "px-3 py-1 rounded-full text-xs font-medium",
+                                            style: {
+                                                ...getStatusColor(app.status),
+                                                borderRadius: '999px',
+                                                padding: '4px 12px',
+                                                fontSize: '12px'
+                                            }
+                                        }, app.status.charAt(0).toUpperCase() + app.status.slice(1))
+                                    )
+                                ),
+
+                                h('div', { className: "space-y-3 mb-6" },
+                                    h('div', { className: "flex items-center justify-between" },
+                                        h('span', { className: "text-slate-300 text-sm", style: { color: '#cbd5e1' } }, 'Environment:'),
+                                        h('span', { 
+                                            className: "text-white font-mono text-sm bg-slate-800/50 px-2 py-1 rounded",
+                                            style: { 
+                                                color: 'white', 
+                                                fontFamily: 'monospace',
+                                                background: 'rgba(30, 41, 59, 0.5)',
+                                                padding: '4px 8px',
+                                                borderRadius: '4px'
+                                            }
+                                        }, app.environment)
+                                    ),
+                                    h('div', { className: "flex items-center justify-between" },
+                                        h('span', { className: "text-slate-300 text-sm", style: { color: '#cbd5e1' } }, 'Port:'),
+                                        h('span', { 
+                                            className: "text-white font-mono text-sm",
+                                            style: { color: 'white', fontFamily: 'monospace' }
+                                        }, app.port)
+                                    ),
+                                    h('div', { className: "flex items-center justify-between" },
+                                        h('span', { className: "text-slate-300 text-sm", style: { color: '#cbd5e1' } }, 'Path:'),
+                                        h('span', { 
+                                            className: "text-white font-mono text-xs bg-slate-800/50 px-2 py-1 rounded truncate",
+                                            style: { 
+                                                color: 'white', 
+                                                fontFamily: 'monospace',
+                                                background: 'rgba(30, 41, 59, 0.5)',
+                                                padding: '4px 8px',
+                                                borderRadius: '4px',
+                                                maxWidth: '200px',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis'
+                                            },
+                                            title: app.path
+                                        }, app.path)
+                                    ),
+                                    app.status === 'running' && app.uptime !== undefined && h('div', { className: "flex items-center justify-between" },
+                                        h('span', { className: "text-slate-300 text-sm flex items-center", style: { color: '#cbd5e1' } },
+                                            h(ClockIcon, { className: "w-4 h-4 mr-1" }),
+                                            'Uptime:'
+                                        ),
+                                        h('span', { 
+                                            className: "text-green-400 font-mono text-sm",
+                                            style: { color: '#4ade80', fontFamily: 'monospace' }
+                                        }, formatUptime(app.uptime))
+                                    ),
+                                    app.started_at && h('div', { className: "flex items-center justify-between" },
+                                        h('span', { className: "text-slate-300 text-sm", style: { color: '#cbd5e1' } }, 'Last Started:'),
+                                        h('span', { className: "text-white text-sm" }, new Date(app.started_at).toLocaleTimeString())
+                                    )
+                                ),
+
+                                h('div', { className: "flex space-x-3" },
+                                    h('button', {
+                                        onClick: () => handleAppAction(app.id, 'start'),
+                                        disabled: app.status === 'running' || app.status === 'starting',
+                                        className: "flex-1 flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200",
+                                        style: {
+                                            background: (app.status === 'running' || app.status === 'starting') ? '#6b7280' : '#16a34a',
+                                            color: 'white',
+                                            padding: '12px 16px',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            cursor: (app.status === 'running' || app.status === 'starting') ? 'not-allowed' : 'pointer',
+                                            flex: 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '8px'
+                                        }
+                                    },
+                                        h(PlayIcon, { className: "w-4 h-4" }),
+                                        h('span', null, 'Start')
+                                    ),
+                                    h('button', {
+                                        onClick: () => handleAppAction(app.id, 'stop'),
+                                        disabled: app.status === 'stopped' || app.status === 'stopping',
+                                        className: "flex-1 flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200",
+                                        style: {
+                                            background: (app.status === 'stopped' || app.status === 'stopping') ? '#6b7280' : '#dc2626',
+                                            color: 'white',
+                                            padding: '12px 16px',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            cursor: (app.status === 'stopped' || app.status === 'stopping') ? 'not-allowed' : 'pointer',
+                                            flex: 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '8px'
+                                        }
+                                    },
+                                        h(StopIcon, { className: "w-4 h-4" }),
+                                        h('span', null, 'Stop')
+                                    )
+                                ),
+
+                                app.status === 'running' && h('div', { 
+                                    className: "mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg",
+                                    style: {
+                                        marginTop: '16px',
+                                        padding: '12px',
+                                        background: 'rgba(34, 197, 94, 0.1)',
+                                        border: '1px solid rgba(34, 197, 94, 0.2)',
+                                        borderRadius: '8px'
+                                    }
+                                },
+                                    h('p', { className: "text-green-400 text-sm", style: { color: '#4ade80' } },
+                                        'Application is accessible at: ',
+                                        h('a', {
+                                            href: `http://192.168.1.227:${app.port}`,
+                                            target: '_blank',
+                                            rel: 'noopener noreferrer',
+                                            className: "ml-2 underline hover:text-green-300",
+                                            style: { marginLeft: '8px', textDecoration: 'underline', color: '#4ade80' }
+                                        }, `192.168.1.227:${app.port}`)
+                                    )
+                                )
+                            )
+                        )
+                    ),
+
+                    // Footer
+                    h('div', { className: "mt-12 text-center" },
+                        h('p', { className: "text-slate-400 text-sm", style: { color: '#94a3b8' } },
+                            'Server Dashboard • Managing applications on 192.168.1.227'
+                        )
+                    )
+                )
+            );
+        };
+
+        // Render the dashboard
+        ReactDOM.render(React.createElement(Dashboard), document.getElementById('root'));
+    </script>
+
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    </style>
+</body>
+</html>
