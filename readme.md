@@ -13,7 +13,7 @@ A modern web-based dashboard for managing Python applications running on a remot
 
 ## 📱 Screenshots
 
-![Dashboard Screenshot](assets/Screenshot 2025-06-07 164340.jpg)
+![Dashboard Screenshot](dashboard/assets/Screenshot.jpg)
 
 The dashboard provides:
 - Real-time application status monitoring
