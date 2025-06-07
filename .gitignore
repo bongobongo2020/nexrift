@@ -143,3 +143,4 @@ dist
 models
 build
 app_manager_env
+.aidigestignore
