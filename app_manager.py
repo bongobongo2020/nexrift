@@ -52,6 +52,197 @@ app_configs = {
     }
 }
 
+class SystemMonitor:
+    def __init__(self):
+        self.gpu_available = self._check_gpu_availability()
+        
+    def _check_gpu_availability(self):
+        """Check if GPU monitoring is available"""
+        try:
+            # Try importing pynvml first (most accurate)
+            import pynvml
+            pynvml.nvmlInit()
+            return True
+        except ImportError:
+            # Try nvidia-smi command as fallback
+            try:
+                subprocess.run(['nvidia-smi'], capture_output=True, check=True)
+                return True
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                return False
+        except Exception:
+            return False
+    
+    def _format_bytes(self, bytes_value):
+        """Convert bytes to human readable format"""
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if bytes_value < 1024.0:
+                return f"{bytes_value:.1f} {unit}"
+            bytes_value /= 1024.0
+        return f"{bytes_value:.1f} PB"
+    
+    def _get_gpu_info_pynvml(self):
+        """Get GPU info using pynvml library"""
+        try:
+            import pynvml
+            pynvml.nvmlInit()
+            device_count = pynvml.nvmlDeviceGetCount()
+            
+            if device_count == 0:
+                return None
+                
+            # Get info for first GPU
+            handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+            name = pynvml.nvmlDeviceGetName(handle).decode('utf-8')
+            
+            # GPU utilization
+            utilization = pynvml.nvmlDeviceGetUtilizationRates(handle)
+            gpu_util = utilization.gpu
+            
+            # Memory info
+            memory_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+            memory_used = memory_info.used
+            memory_total = memory_info.total
+            memory_percent = (memory_used / memory_total) * 100
+            
+            # Temperature
+            try:
+                temperature = pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU)
+            except:
+                temperature = None
+                
+            return {
+                'name': name,
+                'utilization': gpu_util,
+                'memory_used': memory_used,
+                'memory_total': memory_total,
+                'memory_percent': memory_percent,
+                'temperature': temperature
+            }
+        except Exception as e:
+            logger.debug(f"pynvml GPU info failed: {e}")
+            return None
+    
+    def _get_gpu_info_nvidia_smi(self):
+        """Get GPU info using nvidia-smi command"""
+        try:
+            result = subprocess.run([
+                'nvidia-smi', 
+                '--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu',
+                '--format=csv,noheader,nounits'
+            ], capture_output=True, text=True, check=True)
+            
+            line = result.stdout.strip().split('\n')[0]
+            parts = [p.strip() for p in line.split(',')]
+            
+            if len(parts) >= 5:
+                name = parts[0]
+                gpu_util = float(parts[1])
+                memory_used = float(parts[2]) * 1024 * 1024  # Convert MB to bytes
+                memory_total = float(parts[3]) * 1024 * 1024  # Convert MB to bytes
+                memory_percent = (memory_used / memory_total) * 100
+                temperature = float(parts[4]) if parts[4] != '[Not Supported]' else None
+                
+                return {
+                    'name': name,
+                    'utilization': gpu_util,
+                    'memory_used': memory_used,
+                    'memory_total': memory_total,
+                    'memory_percent': memory_percent,
+                    'temperature': temperature
+                }
+        except Exception as e:
+            logger.debug(f"nvidia-smi GPU info failed: {e}")
+            return None
+        
+        return None
+    
+    def get_system_metrics(self):
+        """Get comprehensive system metrics"""
+        try:
+            # CPU metrics
+            cpu_percent = psutil.cpu_percent(interval=0.1)
+            cpu_count = psutil.cpu_count()
+            
+            # Memory metrics
+            memory = psutil.virtual_memory()
+            
+            # Disk metrics (using the main drive)
+            disk_path = '/' if os.name != 'nt' else 'C:\\'
+            disk = psutil.disk_usage(disk_path)
+            
+            # Process count
+            process_count = len(psutil.pids())
+            
+            # GPU metrics
+            gpu_info = None
+            if self.gpu_available:
+                # Try pynvml first, fallback to nvidia-smi
+                gpu_info = self._get_gpu_info_pynvml()
+                if gpu_info is None:
+                    gpu_info = self._get_gpu_info_nvidia_smi()
+            
+            metrics = {
+                'cpu': {
+                    'percent': round(cpu_percent, 1),
+                    'cores': cpu_count,
+                    'color': self._get_usage_color(cpu_percent)
+                },
+                'memory': {
+                    'used': memory.used,
+                    'total': memory.total,
+                    'percent': round(memory.percent, 1),
+                    'used_formatted': self._format_bytes(memory.used),
+                    'total_formatted': self._format_bytes(memory.total),
+                    'color': self._get_usage_color(memory.percent)
+                },
+                'disk': {
+                    'used': disk.used,
+                    'total': disk.total,
+                    'percent': round((disk.used / disk.total) * 100, 1),
+                    'used_formatted': self._format_bytes(disk.used),
+                    'total_formatted': self._format_bytes(disk.total),
+                    'color': self._get_usage_color((disk.used / disk.total) * 100)
+                },
+                'processes': {
+                    'total': process_count
+                },
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            # Add GPU metrics if available
+            if gpu_info:
+                metrics['gpu'] = {
+                    'name': gpu_info['name'],
+                    'utilization': round(gpu_info['utilization'], 1),
+                    'memory_used': gpu_info['memory_used'],
+                    'memory_total': gpu_info['memory_total'],
+                    'memory_percent': round(gpu_info['memory_percent'], 1),
+                    'memory_used_formatted': self._format_bytes(gpu_info['memory_used']),
+                    'memory_total_formatted': self._format_bytes(gpu_info['memory_total']),
+                    'temperature': gpu_info['temperature'],
+                    'utilization_color': self._get_usage_color(gpu_info['utilization']),
+                    'memory_color': self._get_usage_color(gpu_info['memory_percent'])
+                }
+            
+            return metrics
+            
+        except Exception as e:
+            logger.error(f"Failed to get system metrics: {e}")
+            return {
+                'error': str(e),
+                'timestamp': datetime.now().isoformat()
+            }
+    
+    def _get_usage_color(self, percent):
+        """Get color based on usage percentage"""
+        if percent < 50:
+            return 'green'
+        elif percent < 80:
+            return 'yellow'
+        else:
+            return 'red'
+
 class AppManager:
     def __init__(self):
         self.processes = {}
@@ -263,8 +454,9 @@ class AppManager:
         if app_id in self.start_times:
             del self.start_times[app_id]
 
-# Initialize the app manager
+# Initialize the app manager and system monitor
 app_manager = AppManager()
+system_monitor = SystemMonitor()
 
 # API Routes
 @app.route('/api/health', methods=['GET'])
@@ -275,6 +467,17 @@ def health_check():
         'timestamp': datetime.now().isoformat(),
         'server': '192.168.1.227'
     })
+
+@app.route('/api/system/metrics', methods=['GET'])
+def get_system_metrics():
+    """Get real-time system metrics"""
+    metrics = system_monitor.get_system_metrics()
+    
+    # Add running apps count
+    running_apps = len([app for app in app_manager.get_all_apps_status() if app['status'] == 'running'])
+    metrics['processes']['running_apps'] = running_apps
+    
+    return jsonify(metrics)
 
 @app.route('/api/apps', methods=['GET'])
 def get_all_apps():
@@ -303,80 +506,21 @@ def stop_app(app_id):
     status_code = 200 if result['success'] else 400
     return jsonify(result), status_code
 
-@app.route('/api/apps/<app_id>/logs', methods=['GET'])
-def get_app_logs(app_id):
-    """Get recent logs for an application"""
-    if app_id not in app_configs:
-        return jsonify({'error': 'App not found'}), 404
-        
-    config = app_configs[app_id]
+@app.route('/api/apps/<app_id>/restart', methods=['POST'])
+def restart_app(app_id):
+    """Restart an application"""
+    # Stop first
+    stop_result = app_manager.stop_app(app_id)
+    if not stop_result['success'] and 'not running' not in stop_result.get('error', ''):
+        return jsonify(stop_result), 400
     
-    # Check if process is running
-    is_running = app_manager.is_process_running(app_id)
+    # Wait a moment for cleanup
+    time.sleep(2)
     
-    logs = []
-    if app_id in app_manager.processes:
-        process = app_manager.processes[app_id]
-        
-        # Try to read available output without blocking
-        try:
-            # Check if process has terminated and read final output
-            if process.poll() is not None:
-                stdout, stderr = process.communicate(timeout=1)
-                if stdout:
-                    logs.append({'type': 'stdout', 'content': stdout})
-                if stderr:
-                    logs.append({'type': 'stderr', 'content': stderr})
-        except subprocess.TimeoutExpired:
-            # Process is still running, can't get output easily without blocking
-            logs.append({'type': 'info', 'content': 'Process is running, logs available after termination'})
-        except Exception as e:
-            logs.append({'type': 'error', 'content': f'Error reading logs: {str(e)}'})
-    
-    return jsonify({
-        'app_id': app_id,
-        'name': config['name'],
-        'is_running': is_running,
-        'logs': logs,
-        'pid': app_manager.processes[app_id].pid if app_id in app_manager.processes else None
-    })
-
-@app.route('/api/apps/<app_id>/status/detailed', methods=['GET'])
-def get_detailed_app_status(app_id):
-    """Get detailed status including process health check"""
-    if app_id not in app_configs:
-        return jsonify({'error': 'App not found'}), 404
-        
-    status = app_manager.get_app_status(app_id)
-    config = app_configs[app_id]
-    
-    # Additional checks for running processes
-    if status['status'] == 'running' and app_id in app_manager.processes:
-        process = app_manager.processes[app_id]
-        
-        # Check if process is actually running
-        process_running = process.poll() is None
-        
-        # Try to check if the port is accessible (basic health check)
-        port_accessible = False
-        try:
-            import socket
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(2)
-            result = sock.connect_ex(('localhost', config['port']))
-            port_accessible = result == 0
-            sock.close()
-        except Exception:
-            port_accessible = False
-        
-        status.update({
-            'process_running': process_running,
-            'port_accessible': port_accessible,
-            'health_check': 'healthy' if (process_running and port_accessible) else 'unhealthy',
-            'return_code': process.returncode
-        })
-    
-    return jsonify(status)
+    # Start again
+    start_result = app_manager.start_app(app_id)
+    status_code = 200 if start_result['success'] else 400
+    return jsonify(start_result), status_code
 
 @app.route('/api/apps/<app_id>/test', methods=['GET'])
 def test_app_config(app_id):
@@ -426,43 +570,6 @@ def test_app_config(app_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/apps/<app_id>/restart', methods=['POST'])
-def restart_app(app_id):
-    """Restart an application"""
-    # Stop first
-    stop_result = app_manager.stop_app(app_id)
-    if not stop_result['success'] and 'not running' not in stop_result.get('error', ''):
-        return jsonify(stop_result), 400
-    
-    # Wait a moment for cleanup
-    time.sleep(2)
-    
-    # Start again
-    start_result = app_manager.start_app(app_id)
-    status_code = 200 if start_result['success'] else 400
-    return jsonify(start_result), status_code
-
-@app.route('/api/server/status', methods=['GET'])
-def server_status():
-    """Get server system information"""
-    try:
-        cpu_percent = psutil.cpu_percent(interval=1)
-        memory = psutil.virtual_memory()
-        disk = psutil.disk_usage('/')
-        
-        return jsonify({
-            'cpu_usage': cpu_percent,
-            'memory_usage': memory.percent,
-            'memory_total': memory.total,
-            'memory_used': memory.used,
-            'disk_usage': disk.percent,
-            'disk_total': disk.total,
-            'disk_used': disk.used,
-            'running_apps': len([app for app in app_manager.get_all_apps_status() if app['status'] == 'running'])
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 def signal_handler(sig, frame):
     """Handle shutdown signals gracefully"""
     logger.info('Shutting down server...')
@@ -479,10 +586,16 @@ signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 
 if __name__ == '__main__':
-    logger.info("Starting Python App Management Server...")
+    logger.info("Starting Python App Management Server with System Monitoring...")
     logger.info("Configured applications:")
     for app_id, config in app_configs.items():
         logger.info(f"  - {config['name']} ({app_id}): {config['path']}")
+    
+    # Check GPU availability
+    if system_monitor.gpu_available:
+        logger.info("GPU monitoring enabled")
+    else:
+        logger.info("GPU monitoring not available (install pynvml for detailed GPU metrics)")
     
     # Run the server
     app.run(

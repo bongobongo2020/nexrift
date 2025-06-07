@@ -1,26 +1,50 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Python App Dashboard</title>
+    <title>Python App Dashboard with System Monitor</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Fallback styles if Tailwind doesn't load */
-        .fallback-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .fallback-card { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; margin: 10px 0; }
-        .fallback-button { background: #3b82f6; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; margin: 5px; }
-        .fallback-button:hover { background: #2563eb; }
-        .fallback-button:disabled { background: #6b7280; cursor: not-allowed; }
+        /* Progress bar animations */
+        .progress-bar {
+            transition: width 0.3s ease-in-out;
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
     </style>
 </head>
 <body style="margin: 0; background: linear-gradient(135deg, #1e293b, #7c3aed, #1e293b); min-height: 100vh; font-family: system-ui, -apple-system, sans-serif;">
     <div id="root">
-        <!-- Loading fallback -->
         <div style="display: flex; justify-content: center; align-items: center; height: 100vh; color: white;">
             <div>Loading dashboard...</div>
         </div>
@@ -29,7 +53,7 @@
     <script type="text/babel">
         const { useState, useEffect, createElement: h } = React;
 
-        // Simple icon components (fallback if Lucide doesn't load)
+        // Icon components
         const PlayIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'currentColor' },
             h('path', { d: 'M8 5v14l11-7z' })
         );
@@ -64,11 +88,294 @@
             h('polyline', { points: '12,6 12,12 16,14' })
         );
 
+        const CpuIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+            h('rect', { x: 4, y: 4, width: 16, height: 16, rx: 2 }),
+            h('rect', { x: 9, y: 9, width: 6, height: 6 }),
+            h('line', { x1: 9, y1: 1, x2: 9, y2: 4 }),
+            h('line', { x1: 15, y1: 1, x2: 15, y2: 4 }),
+            h('line', { x1: 9, y1: 20, x2: 9, y2: 23 }),
+            h('line', { x1: 15, y1: 20, x2: 15, y2: 23 })
+        );
+
+        const MemoryIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+            h('rect', { x: 2, y: 3, width: 20, height: 14, rx: 2 }),
+            h('line', { x1: 8, y1: 21, x2: 16, y2: 21 }),
+            h('line', { x1: 12, y1: 17, x2: 12, y2: 21 })
+        );
+
+        const HardDriveIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+            h('line', { x1: 22, y1: 12, x2: 2, y2: 12 }),
+            h('path', { d: 'M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z' }),
+            h('line', { x1: 6, y1: 16, x2: 6.01, y2: 16 }),
+            h('line', { x1: 10, y1: 16, x2: 10.01, y2: 16 })
+        );
+
+        const GpuIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+            h('rect', { x: 2, y: 6, width: 20, height: 12, rx: 2 }),
+            h('circle', { cx: 7, cy: 12, r: 2 }),
+            h('circle', { cx: 17, cy: 12, r: 2 }),
+            h('line', { x1: 12, y1: 8, x2: 12, y2: 16 })
+        );
+
+        const ThermometerIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+            h('path', { d: 'M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z' })
+        );
+
+        // Progress Bar Component
+        const ProgressBar = ({ percent, color, height = 6 }) => {
+            const getColorClass = () => {
+                switch (color) {
+                    case 'green': return 'bg-green-500';
+                    case 'yellow': return 'bg-yellow-500';
+                    case 'red': return 'bg-red-500';
+                    default: return 'bg-blue-500';
+                }
+            };
+
+            return h('div', { 
+                className: "w-full bg-white/20 rounded-full overflow-hidden",
+                style: { height: `${height}px` }
+            },
+                h('div', {
+                    className: `progress-bar ${getColorClass()}`,
+                    style: { 
+                        width: `${Math.min(percent, 100)}%`,
+                        height: '100%',
+                        borderRadius: '9999px'
+                    }
+                })
+            );
+        };
+
+        // System Metrics Card Component
+        const SystemMetricsCard = ({ metrics, error }) => {
+            if (error) {
+                return h('div', {
+                    className: "bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 p-6",
+                    style: { 
+                        background: 'rgba(255, 255, 255, 0.1)', 
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        borderRadius: '12px'
+                    }
+                },
+                    h('div', { className: "flex items-center space-x-3 mb-4" },
+                        h('div', { 
+                            className: "p-2 bg-red-500/20 rounded-lg",
+                            style: { background: 'rgba(239, 68, 68, 0.2)', borderRadius: '8px' }
+                        },
+                            h('div', { 
+                                className: "w-6 h-6 text-red-400",
+                                style: { color: '#f87171', fontSize: '24px' }
+                            }, '⚠️')
+                        ),
+                        h('div', null,
+                            h('h3', { className: "text-xl font-semibold text-white" }, 'System Monitor'),
+                            h('p', { className: "text-red-400 text-sm", style: { color: '#f87171' } }, 'Unable to load metrics')
+                        )
+                    ),
+                    h('p', { className: "text-slate-300", style: { color: '#cbd5e1' } }, error)
+                );
+            }
+
+            if (!metrics) {
+                return h('div', {
+                    className: "bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 p-6",
+                    style: { 
+                        background: 'rgba(255, 255, 255, 0.1)', 
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        borderRadius: '12px'
+                    }
+                },
+                    h('div', { className: "animate-pulse" },
+                        h('div', { className: "flex items-center space-x-3 mb-4" },
+                            h('div', { 
+                                className: "w-10 h-10 bg-blue-500/20 rounded-lg pulse-animation",
+                                style: { background: 'rgba(59, 130, 246, 0.2)', borderRadius: '8px' }
+                            }),
+                            h('div', null,
+                                h('div', { 
+                                    className: "h-6 bg-white/20 rounded w-32 mb-2",
+                                    style: { background: 'rgba(255, 255, 255, 0.2)', borderRadius: '4px' }
+                                }),
+                                h('div', { 
+                                    className: "h-4 bg-white/10 rounded w-24",
+                                    style: { background: 'rgba(255, 255, 255, 0.1)', borderRadius: '4px' }
+                                })
+                            )
+                        )
+                    )
+                );
+            }
+
+            return h('div', {
+                className: "bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 p-6 custom-scrollbar",
+                style: { 
+                    background: 'rgba(255, 255, 255, 0.1)', 
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '12px',
+                    maxHeight: '600px',
+                    overflowY: 'auto'
+                }
+            },
+                // Header
+                h('div', { className: "flex items-center space-x-3 mb-6" },
+                    h('div', { 
+                        className: "p-2 bg-blue-500/20 rounded-lg",
+                        style: { background: 'rgba(59, 130, 246, 0.2)', borderRadius: '8px' }
+                    },
+                        h('div', { 
+                            className: "w-6 h-6 text-blue-400",
+                            style: { color: '#60a5fa', fontSize: '24px' }
+                        }, '📊')
+                    ),
+                    h('div', null,
+                        h('h3', { className: "text-xl font-semibold text-white" }, 'System Monitor'),
+                        h('p', { className: "text-slate-300 text-sm", style: { color: '#cbd5e1' } }, 'Real-time system metrics')
+                    )
+                ),
+
+                // Metrics
+                h('div', { className: "space-y-5" },
+                    // CPU
+                    h('div', { className: "space-y-2" },
+                        h('div', { className: "flex items-center justify-between" },
+                            h('div', { className: "flex items-center space-x-2" },
+                                h(CpuIcon, { className: "w-4 h-4 text-blue-400", style: { color: '#60a5fa' } }),
+                                h('span', { className: "text-white font-medium" }, 
+                                    `CPU (${metrics.cpu?.cores || 0} cores)`)
+                            ),
+                            h('span', { 
+                                className: "text-white font-mono text-sm",
+                                style: { fontFamily: 'monospace' }
+                            }, `${metrics.cpu?.percent || 0}%`)
+                        ),
+                        h(ProgressBar, { 
+                            percent: metrics.cpu?.percent || 0, 
+                            color: metrics.cpu?.color || 'green' 
+                        })
+                    ),
+
+                    // RAM
+                    h('div', { className: "space-y-2" },
+                        h('div', { className: "flex items-center justify-between" },
+                            h('div', { className: "flex items-center space-x-2" },
+                                h(MemoryIcon, { className: "w-4 h-4 text-green-400", style: { color: '#4ade80' } }),
+                                h('span', { className: "text-white font-medium" }, 
+                                    `RAM (${metrics.memory?.used_formatted || '0 B'} / ${metrics.memory?.total_formatted || '0 B'})`)
+                            ),
+                            h('span', { 
+                                className: "text-white font-mono text-sm",
+                                style: { fontFamily: 'monospace' }
+                            }, `${metrics.memory?.percent || 0}%`)
+                        ),
+                        h(ProgressBar, { 
+                            percent: metrics.memory?.percent || 0, 
+                            color: metrics.memory?.color || 'green' 
+                        })
+                    ),
+
+                    // Disk
+                    h('div', { className: "space-y-2" },
+                        h('div', { className: "flex items-center justify-between" },
+                            h('div', { className: "flex items-center space-x-2" },
+                                h(HardDriveIcon, { className: "w-4 h-4 text-purple-400", style: { color: '#a78bfa' } }),
+                                h('span', { className: "text-white font-medium" }, 
+                                    `Disk (${metrics.disk?.used_formatted || '0 B'} / ${metrics.disk?.total_formatted || '0 B'})`)
+                            ),
+                            h('span', { 
+                                className: "text-white font-mono text-sm",
+                                style: { fontFamily: 'monospace' }
+                            }, `${metrics.disk?.percent || 0}%`)
+                        ),
+                        h(ProgressBar, { 
+                            percent: metrics.disk?.percent || 0, 
+                            color: metrics.disk?.color || 'green' 
+                        })
+                    ),
+
+                    // GPU (if available)
+                    metrics.gpu && h('div', { className: "space-y-3 pt-2 border-t border-white/10", style: { borderColor: 'rgba(255, 255, 255, 0.1)' } },
+                        // GPU Utilization
+                        h('div', { className: "space-y-2" },
+                            h('div', { className: "flex items-center justify-between" },
+                                h('div', { className: "flex items-center space-x-2" },
+                                    h(GpuIcon, { className: "w-4 h-4 text-orange-400", style: { color: '#fb923c' } }),
+                                    h('span', { className: "text-white font-medium" }, 
+                                        `${metrics.gpu.name} - Utilization`)
+                                ),
+                                h('span', { 
+                                    className: "text-white font-mono text-sm",
+                                    style: { fontFamily: 'monospace' }
+                                }, `${metrics.gpu.utilization}%`)
+                            ),
+                            h(ProgressBar, { 
+                                percent: metrics.gpu.utilization, 
+                                color: metrics.gpu.utilization_color 
+                            })
+                        ),
+
+                        // GPU Memory
+                        h('div', { className: "space-y-2" },
+                            h('div', { className: "flex items-center justify-between" },
+                                h('div', { className: "flex items-center space-x-2" },
+                                    h(MemoryIcon, { className: "w-4 h-4 text-orange-400", style: { color: '#fb923c' } }),
+                                    h('span', { className: "text-white font-medium" }, 
+                                        `GPU Memory (${metrics.gpu.memory_used_formatted} / ${metrics.gpu.memory_total_formatted})`)
+                                ),
+                                h('span', { 
+                                    className: "text-white font-mono text-sm",
+                                    style: { fontFamily: 'monospace' }
+                                }, `${metrics.gpu.memory_percent}%`)
+                            ),
+                            h(ProgressBar, { 
+                                percent: metrics.gpu.memory_percent, 
+                                color: metrics.gpu.memory_color 
+                            })
+                        ),
+
+                        // GPU Temperature
+                        metrics.gpu.temperature && h('div', { className: "flex items-center justify-between" },
+                            h('div', { className: "flex items-center space-x-2" },
+                                h(ThermometerIcon, { className: "w-4 h-4 text-red-400", style: { color: '#f87171' } }),
+                                h('span', { className: "text-white font-medium" }, 'Temperature:')
+                            ),
+                            h('span', { 
+                                className: "text-white font-mono text-sm",
+                                style: { fontFamily: 'monospace' }
+                            }, `${metrics.gpu.temperature}°C`)
+                        )
+                    ),
+
+                    // Process info
+                    h('div', { className: "pt-3 border-t border-white/10 space-y-2", style: { borderColor: 'rgba(255, 255, 255, 0.1)' } },
+                        h('div', { className: "flex items-center justify-between" },
+                            h('span', { className: "text-slate-300", style: { color: '#cbd5e1' } }, 'Running Processes:'),
+                            h('span', { className: "text-white font-mono", style: { fontFamily: 'monospace' } }, 
+                                metrics.processes?.total || 0)
+                        ),
+                        h('div', { className: "flex items-center justify-between" },
+                            h('span', { className: "text-slate-300", style: { color: '#cbd5e1' } }, 'Active Apps:'),
+                            h('span', { className: "text-white font-mono", style: { fontFamily: 'monospace' } }, 
+                                metrics.processes?.running_apps || 0)
+                        )
+                    )
+                ),
+
+                // Last updated
+                h('div', { className: "mt-6 pt-4 border-t border-white/10", style: { borderColor: 'rgba(255, 255, 255, 0.1)' } },
+                    h('p', { className: "text-slate-400 text-xs text-center", style: { color: '#94a3b8' } },
+                        'Last updated: ', new Date(metrics.timestamp).toLocaleTimeString())
+                )
+            );
+        };
+
         const Dashboard = () => {
             const [apps, setApps] = useState([]);
+            const [systemMetrics, setSystemMetrics] = useState(null);
             const [serverStatus, setServerStatus] = useState('disconnected');
             const [loading, setLoading] = useState(true);
             const [error, setError] = useState(null);
+            const [metricsError, setMetricsError] = useState(null);
             const serverAddress = '192.168.1.227:8000';
 
             const fetchAppsStatus = async () => {
@@ -86,12 +393,31 @@
                 }
             };
 
+            const fetchSystemMetrics = async () => {
+                try {
+                    const response = await fetch(`http://${serverAddress}/api/system/metrics`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    const data = await response.json();
+                    setSystemMetrics(data);
+                    setMetricsError(null);
+                } catch (err) {
+                    console.error('Failed to fetch system metrics:', err);
+                    setMetricsError(`Unable to fetch system metrics: ${err.message}`);
+                }
+            };
+
             useEffect(() => {
                 fetchAppsStatus();
+                fetchSystemMetrics();
                 setLoading(false);
                 
-                const interval = setInterval(fetchAppsStatus, 5000);
-                return () => clearInterval(interval);
+                const appsInterval = setInterval(fetchAppsStatus, 5000);
+                const metricsInterval = setInterval(fetchSystemMetrics, 5000);
+                
+                return () => {
+                    clearInterval(appsInterval);
+                    clearInterval(metricsInterval);
+                };
             }, []);
 
             const formatUptime = (seconds) => {
@@ -142,7 +468,7 @@
                 if (status === 'running') return h(CheckIcon, { className, style });
                 if (status === 'starting' || status === 'stopping') {
                     return h('div', { 
-                        className: className + ' animate-pulse',
+                        className: className + ' pulse-animation',
                         style: { ...style, animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
                     }, '●');
                 }
@@ -172,11 +498,14 @@
                         h('div', { className: "flex items-center justify-between mb-6" },
                             h('div', null,
                                 h('h1', { className: "text-4xl font-bold text-white mb-2" }, 'App Dashboard'),
-                                h('p', { className: "text-slate-300" }, 'Manage Python applications on your server')
+                                h('p', { className: "text-slate-300" }, 'Manage applications and monitor system health')
                             ),
                             h('div', { className: "flex items-center space-x-4" },
                                 h('button', {
-                                    onClick: fetchAppsStatus,
+                                    onClick: () => {
+                                        fetchAppsStatus();
+                                        fetchSystemMetrics();
+                                    },
                                     className: "flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
                                 },
                                     h(RefreshIcon, { className: "w-4 h-4" }),
@@ -200,166 +529,158 @@
                         )
                     ),
 
-                    // App Cards
-                    h('div', { className: "grid grid-cols-1 lg:grid-cols-2 gap-6" },
-                        apps.map((app) =>
-                            h('div', {
-                                key: app.id,
-                                className: "bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 p-6 hover:bg-white/15 transition-all duration-300",
-                                style: { 
-                                    background: 'rgba(255, 255, 255, 0.1)', 
-                                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                                    borderRadius: '12px'
-                                }
-                            },
-                                h('div', { className: "flex items-start justify-between mb-4" },
-                                    h('div', { className: "flex items-center space-x-3" },
-                                        h('div', { 
-                                            className: "p-2 bg-blue-500/20 rounded-lg",
-                                            style: { background: 'rgba(59, 130, 246, 0.2)', borderRadius: '8px' }
-                                        },
-                                            h('div', { 
-                                                className: "w-6 h-6 text-blue-400",
-                                                style: { color: '#60a5fa', fontSize: '24px' }
-                                            }, '⚡')
-                                        ),
-                                        h('div', null,
-                                            h('h3', { className: "text-xl font-semibold text-white" }, app.name),
-                                            h('p', { className: "text-slate-300 text-sm", style: { color: '#cbd5e1' } }, app.description)
-                                        )
-                                    ),
-                                    h('div', { className: "flex items-center space-x-2" },
-                                        getStatusIcon(app.status),
-                                        h('span', {
-                                            className: "px-3 py-1 rounded-full text-xs font-medium",
-                                            style: {
-                                                ...getStatusColor(app.status),
-                                                borderRadius: '999px',
-                                                padding: '4px 12px',
-                                                fontSize: '12px'
-                                            }
-                                        }, app.status.charAt(0).toUpperCase() + app.status.slice(1))
-                                    )
-                                ),
+                    // Main Content - 3 Column Layout
+                    h('div', { className: "grid grid-cols-1 lg:grid-cols-3 gap-6" },
+                        // System Monitor (1/3 width)
+                        h('div', { className: "lg:col-span-1" },
+                            h(SystemMetricsCard, { 
+                                metrics: systemMetrics, 
+                                error: metricsError 
+                            })
+                        ),
 
-                                h('div', { className: "space-y-3 mb-6" },
-                                    h('div', { className: "flex items-center justify-between" },
-                                        h('span', { className: "text-slate-300 text-sm", style: { color: '#cbd5e1' } }, 'Environment:'),
-                                        h('span', { 
-                                            className: "text-white font-mono text-sm bg-slate-800/50 px-2 py-1 rounded",
-                                            style: { 
-                                                color: 'white', 
-                                                fontFamily: 'monospace',
-                                                background: 'rgba(30, 41, 59, 0.5)',
-                                                padding: '4px 8px',
-                                                borderRadius: '4px'
-                                            }
-                                        }, app.environment)
-                                    ),
-                                    h('div', { className: "flex items-center justify-between" },
-                                        h('span', { className: "text-slate-300 text-sm", style: { color: '#cbd5e1' } }, 'Port:'),
-                                        h('span', { 
-                                            className: "text-white font-mono text-sm",
-                                            style: { color: 'white', fontFamily: 'monospace' }
-                                        }, app.port)
-                                    ),
-                                    h('div', { className: "flex items-center justify-between" },
-                                        h('span', { className: "text-slate-300 text-sm", style: { color: '#cbd5e1' } }, 'Path:'),
-                                        h('span', { 
-                                            className: "text-white font-mono text-xs bg-slate-800/50 px-2 py-1 rounded truncate",
-                                            style: { 
-                                                color: 'white', 
-                                                fontFamily: 'monospace',
-                                                background: 'rgba(30, 41, 59, 0.5)',
-                                                padding: '4px 8px',
-                                                borderRadius: '4px',
-                                                maxWidth: '200px',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis'
+                        // App Cards (2/3 width)
+                        h('div', { className: "lg:col-span-2" },
+                            h('div', { className: "grid grid-cols-1 xl:grid-cols-2 gap-6" },
+                                apps.map((app) =>
+                                    h('div', {
+                                        key: app.id,
+                                        className: "bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 p-6 hover:bg-white/15 transition-all duration-300",
+                                        style: { 
+                                            background: 'rgba(255, 255, 255, 0.1)', 
+                                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                                            borderRadius: '12px'
+                                        }
+                                    },
+                                        h('div', { className: "flex items-start justify-between mb-4" },
+                                            h('div', { className: "flex items-center space-x-3" },
+                                                h('div', { 
+                                                    className: "p-2 bg-blue-500/20 rounded-lg",
+                                                    style: { background: 'rgba(59, 130, 246, 0.2)', borderRadius: '8px' }
+                                                },
+                                                    h('div', { 
+                                                        className: "w-6 h-6 text-blue-400",
+                                                        style: { color: '#60a5fa', fontSize: '24px' }
+                                                    }, '⚡')
+                                                ),
+                                                h('div', null,
+                                                    h('h3', { className: "text-xl font-semibold text-white" }, app.name),
+                                                    h('p', { className: "text-slate-300 text-sm", style: { color: '#cbd5e1' } }, app.description)
+                                                )
+                                            ),
+                                            h('div', { className: "flex items-center space-x-2" },
+                                                getStatusIcon(app.status),
+                                                h('span', {
+                                                    className: "px-3 py-1 rounded-full text-xs font-medium",
+                                                    style: {
+                                                        ...getStatusColor(app.status),
+                                                        borderRadius: '999px',
+                                                        padding: '4px 12px',
+                                                        fontSize: '12px'
+                                                    }
+                                                }, app.status.charAt(0).toUpperCase() + app.status.slice(1))
+                                            )
+                                        ),
+
+                                        h('div', { className: "space-y-3 mb-6" },
+                                            h('div', { className: "flex items-center justify-between" },
+                                                h('span', { className: "text-slate-300 text-sm", style: { color: '#cbd5e1' } }, 'Environment:'),
+                                                h('span', { 
+                                                    className: "text-white font-mono text-sm bg-slate-800/50 px-2 py-1 rounded",
+                                                    style: { 
+                                                        color: 'white', 
+                                                        fontFamily: 'monospace',
+                                                        background: 'rgba(30, 41, 59, 0.5)',
+                                                        padding: '4px 8px',
+                                                        borderRadius: '4px'
+                                                    }
+                                                }, app.environment || 'default')
+                                            ),
+                                            h('div', { className: "flex items-center justify-between" },
+                                                h('span', { className: "text-slate-300 text-sm", style: { color: '#cbd5e1' } }, 'Port:'),
+                                                h('span', { 
+                                                    className: "text-white font-mono text-sm",
+                                                    style: { color: 'white', fontFamily: 'monospace' }
+                                                }, app.port)
+                                            ),
+                                            app.status === 'running' && app.uptime !== undefined && h('div', { className: "flex items-center justify-between" },
+                                                h('span', { className: "text-slate-300 text-sm flex items-center", style: { color: '#cbd5e1' } },
+                                                    h(ClockIcon, { className: "w-4 h-4 mr-1" }),
+                                                    'Uptime:'
+                                                ),
+                                                h('span', { 
+                                                    className: "text-green-400 font-mono text-sm",
+                                                    style: { color: '#4ade80', fontFamily: 'monospace' }
+                                                }, formatUptime(app.uptime))
+                                            )
+                                        ),
+
+                                        h('div', { className: "flex space-x-3" },
+                                            h('button', {
+                                                onClick: () => handleAppAction(app.id, 'start'),
+                                                disabled: app.status === 'running' || app.status === 'starting',
+                                                className: "flex-1 flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200",
+                                                style: {
+                                                    background: (app.status === 'running' || app.status === 'starting') ? '#6b7280' : '#16a34a',
+                                                    color: 'white',
+                                                    padding: '12px 16px',
+                                                    borderRadius: '8px',
+                                                    border: 'none',
+                                                    cursor: (app.status === 'running' || app.status === 'starting') ? 'not-allowed' : 'pointer',
+                                                    flex: 1,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '8px'
+                                                }
                                             },
-                                            title: app.path
-                                        }, app.path)
-                                    ),
-                                    app.status === 'running' && app.uptime !== undefined && h('div', { className: "flex items-center justify-between" },
-                                        h('span', { className: "text-slate-300 text-sm flex items-center", style: { color: '#cbd5e1' } },
-                                            h(ClockIcon, { className: "w-4 h-4 mr-1" }),
-                                            'Uptime:'
+                                                h(PlayIcon, { className: "w-4 h-4" }),
+                                                h('span', null, 'Start')
+                                            ),
+                                            h('button', {
+                                                onClick: () => handleAppAction(app.id, 'stop'),
+                                                disabled: app.status === 'stopped' || app.status === 'stopping',
+                                                className: "flex-1 flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200",
+                                                style: {
+                                                    background: (app.status === 'stopped' || app.status === 'stopping') ? '#6b7280' : '#dc2626',
+                                                    color: 'white',
+                                                    padding: '12px 16px',
+                                                    borderRadius: '8px',
+                                                    border: 'none',
+                                                    cursor: (app.status === 'stopped' || app.status === 'stopping') ? 'not-allowed' : 'pointer',
+                                                    flex: 1,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '8px'
+                                                }
+                                            },
+                                                h(StopIcon, { className: "w-4 h-4" }),
+                                                h('span', null, 'Stop')
+                                            )
                                         ),
-                                        h('span', { 
-                                            className: "text-green-400 font-mono text-sm",
-                                            style: { color: '#4ade80', fontFamily: 'monospace' }
-                                        }, formatUptime(app.uptime))
-                                    ),
-                                    app.started_at && h('div', { className: "flex items-center justify-between" },
-                                        h('span', { className: "text-slate-300 text-sm", style: { color: '#cbd5e1' } }, 'Last Started:'),
-                                        h('span', { className: "text-white text-sm" }, new Date(app.started_at).toLocaleTimeString())
-                                    )
-                                ),
 
-                                h('div', { className: "flex space-x-3" },
-                                    h('button', {
-                                        onClick: () => handleAppAction(app.id, 'start'),
-                                        disabled: app.status === 'running' || app.status === 'starting',
-                                        className: "flex-1 flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200",
-                                        style: {
-                                            background: (app.status === 'running' || app.status === 'starting') ? '#6b7280' : '#16a34a',
-                                            color: 'white',
-                                            padding: '12px 16px',
-                                            borderRadius: '8px',
-                                            border: 'none',
-                                            cursor: (app.status === 'running' || app.status === 'starting') ? 'not-allowed' : 'pointer',
-                                            flex: 1,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '8px'
-                                        }
-                                    },
-                                        h(PlayIcon, { className: "w-4 h-4" }),
-                                        h('span', null, 'Start')
-                                    ),
-                                    h('button', {
-                                        onClick: () => handleAppAction(app.id, 'stop'),
-                                        disabled: app.status === 'stopped' || app.status === 'stopping',
-                                        className: "flex-1 flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200",
-                                        style: {
-                                            background: (app.status === 'stopped' || app.status === 'stopping') ? '#6b7280' : '#dc2626',
-                                            color: 'white',
-                                            padding: '12px 16px',
-                                            borderRadius: '8px',
-                                            border: 'none',
-                                            cursor: (app.status === 'stopped' || app.status === 'stopping') ? 'not-allowed' : 'pointer',
-                                            flex: 1,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '8px'
-                                        }
-                                    },
-                                        h(StopIcon, { className: "w-4 h-4" }),
-                                        h('span', null, 'Stop')
-                                    )
-                                ),
-
-                                app.status === 'running' && h('div', { 
-                                    className: "mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg",
-                                    style: {
-                                        marginTop: '16px',
-                                        padding: '12px',
-                                        background: 'rgba(34, 197, 94, 0.1)',
-                                        border: '1px solid rgba(34, 197, 94, 0.2)',
-                                        borderRadius: '8px'
-                                    }
-                                },
-                                    h('p', { className: "text-green-400 text-sm", style: { color: '#4ade80' } },
-                                        'Application is accessible at: ',
-                                        h('a', {
-                                            href: `http://192.168.1.227:${app.port}`,
-                                            target: '_blank',
-                                            rel: 'noopener noreferrer',
-                                            className: "ml-2 underline hover:text-green-300",
-                                            style: { marginLeft: '8px', textDecoration: 'underline', color: '#4ade80' }
-                                        }, `192.168.1.227:${app.port}`)
+                                        app.status === 'running' && h('div', { 
+                                            className: "mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg",
+                                            style: {
+                                                marginTop: '16px',
+                                                padding: '12px',
+                                                background: 'rgba(34, 197, 94, 0.1)',
+                                                border: '1px solid rgba(34, 197, 94, 0.2)',
+                                                borderRadius: '8px'
+                                            }
+                                        },
+                                            h('p', { className: "text-green-400 text-sm", style: { color: '#4ade80' } },
+                                                'Application is accessible at: ',
+                                                h('a', {
+                                                    href: `http://192.168.1.227:${app.port}`,
+                                                    target: '_blank',
+                                                    rel: 'noopener noreferrer',
+                                                    className: "ml-2 underline hover:text-green-300",
+                                                    style: { marginLeft: '8px', textDecoration: 'underline', color: '#4ade80' }
+                                                }, `192.168.1.227:${app.port}`)
+                                            )
+                                        )
                                     )
                                 )
                             )
@@ -369,7 +690,7 @@
                     // Footer
                     h('div', { className: "mt-12 text-center" },
                         h('p', { className: "text-slate-400 text-sm", style: { color: '#94a3b8' } },
-                            'Server Dashboard • Managing applications on 192.168.1.227'
+                            'Server Dashboard • Managing applications and monitoring system health on 192.168.1.227'
                         )
                     )
                 )
@@ -379,13 +700,6 @@
         // Render the dashboard
         ReactDOM.render(React.createElement(Dashboard), document.getElementById('root'));
     </script>
-
-    <style>
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: .5; }
-        }
-        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-    </style>
 </body>
 </html>
+           
