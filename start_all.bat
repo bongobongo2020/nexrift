@@ -40,7 +40,7 @@ goto invalid_choice
 echo.
 echo Starting Backend Server...
 echo ===============================================
-start "App Manager Backend" cmd /k "cd /d E:\projects\pythonappmanager && start_app_manager.bat"
+start "App Manager Backend" cmd /k "cd /d E:\projects\nexrift && start_app_manager.bat"
 echo Backend server started in a new window
 echo.
 pause
@@ -50,7 +50,7 @@ goto menu
 echo.
 echo Starting Dashboard...
 echo ===============================================
-start "App Manager Dashboard" cmd /k "cd /d E:\projects\pythonappmanager\dashboard && start_dashboard.bat"
+start "App Manager Dashboard" cmd /k "cd /d E:\projects\nexrift\dashboard && start_dashboard.bat"
 echo Dashboard started in a new window
 echo.
 pause
@@ -60,12 +60,12 @@ goto menu
 echo.
 echo Starting Backend Server...
 echo ===============================================
-start "App Manager Backend" cmd /k "cd /d E:\projects\pythonappmanager && start_app_manager.bat"
+start "App Manager Backend" cmd /k "cd /d E:\projects\nexrift && start_app_manager.bat"
 timeout /t 3 /nobreak >nul
 echo.
 echo Starting Dashboard...
 echo ===============================================
-start "App Manager Dashboard" cmd /k "cd /d E:\projects\pythonappmanager\dashboard && start_dashboard.bat"
+start "App Manager Dashboard" cmd /k "cd /d E:\projects\nexrift\dashboard && start_dashboard.bat"
 echo.
 echo Both services started in separate windows
 echo   - Backend: http://192.168.1.227:5000

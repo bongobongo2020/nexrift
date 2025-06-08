@@ -15,7 +15,7 @@ echo ===============================================
 echo.
 
 rem Set the path to your dashboard directory
-set DASHBOARD_DIR=E:\projects\pythonappmanager\dashboard
+set DASHBOARD_DIR=E:\projects\nexrift\dashboard
 set DASHBOARD_SCRIPT=serve_dashboard.py
 set DASHBOARD_HTML=dashboard.html
 

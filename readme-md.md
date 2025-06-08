@@ -35,7 +35,7 @@ git clone <repository-url>
 cd python-app-manager
 ```
 
-Or download and extract the files to your desired directory (e.g., `E:\projects\pythonappmanager`).
+Or download and extract the files to your desired directory (e.g., `E:\projects\nexrift`).
 
 ### Step 2: Create Virtual Environment
 
@@ -97,8 +97,8 @@ python ../setup_dashboard.py  # This creates dashboard.html and serve_dashboard.
 
 2. **Update paths** in the batch files:
    ```batch
-   set PROJECT_DIR=E:\projects\pythonappmanager
-   set DASHBOARD_DIR=E:\projects\pythonappmanager\dashboard
+   set PROJECT_DIR=E:\projects\nexrift
+   set DASHBOARD_DIR=E:\projects\nexrift\dashboard
    set ENV_NAME=app_manager_env
    ```
 
@@ -111,14 +111,14 @@ python ../setup_dashboard.py  # This creates dashboard.html and serve_dashboard.
 
 **Terminal 1 - Backend Server:**
 ```bash
-cd /path/to/pythonappmanager
+cd /path/to/nexrift
 conda activate app_manager_env  # or activate your venv
 python app_manager.py
 ```
 
 **Terminal 2 - Dashboard Server:**
 ```bash
-cd /path/to/pythonappmanager/dashboard
+cd /path/to/nexrift/dashboard
 python serve_dashboard.py
 ```
 

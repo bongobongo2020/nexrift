@@ -15,7 +15,7 @@ echo ===============================================
 echo.
 
 rem Set the path to your project directory
-set PROJECT_DIR=E:\projects\pythonappmanager
+set PROJECT_DIR=E:\projects\nexrift
 set ENV_NAME=app_manager_env
 set SERVER_SCRIPT=app_manager.py
 
