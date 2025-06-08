@@ -33,7 +33,7 @@ The dashboard provides:
 ### Step 1: Clone or Download
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/bongobongo2020/nexrift
 cd nexrift
 ```
 
