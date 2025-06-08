@@ -1,4 +1,4 @@
-# Python App Manager
+# NexRift
 
 A modern web-based dashboard for managing Python applications running on a remote server. Start, stop, and monitor your applications with a beautiful, responsive interface.
 
@@ -12,6 +12,8 @@ A modern web-based dashboard for managing Python applications running on a remot
 - **🌐 Network Access** - Access your apps from any device on your network
 
 ## 📱 Screenshots
+
+![Dashboard Screenshot](dashboard/assets/Screenshot.jpg)
 
 The dashboard provides:
 - Real-time application status monitoring
