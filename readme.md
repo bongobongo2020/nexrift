@@ -34,7 +34,7 @@ The dashboard provides:
 
 ```bash
 git clone <repository-url>
-cd python-app-manager
+cd nexrift
 ```
 
 Or download and extract the files to your desired directory (e.g., `E:\projects\pythonappmanager`).
