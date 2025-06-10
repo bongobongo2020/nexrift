@@ -40,7 +40,7 @@ goto invalid_choice
 echo.
 echo Starting Backend Server...
 echo ===============================================
-start "App Manager Backend" cmd /k "cd /d E:\projects\nexrift && start_app_manager.bat"
+start "App Manager Backend" cmd /k "start_app_manager.bat"
 echo Backend server started in a new window
 echo.
 pause
@@ -50,7 +50,7 @@ goto menu
 echo.
 echo Starting Dashboard...
 echo ===============================================
-start "App Manager Dashboard" cmd /k "cd /d E:\projects\nexrift\dashboard && start_dashboard.bat"
+start "App Manager Dashboard" cmd /k "cd dashboard && start_dashboard.bat"
 echo Dashboard started in a new window
 echo.
 pause
@@ -60,15 +60,15 @@ goto menu
 echo.
 echo Starting Backend Server...
 echo ===============================================
-start "App Manager Backend" cmd /k "cd /d E:\projects\nexrift && start_app_manager.bat"
+start "App Manager Backend" cmd /k "start_app_manager.bat"
 timeout /t 3 /nobreak >nul
 echo.
 echo Starting Dashboard...
 echo ===============================================
-start "App Manager Dashboard" cmd /k "cd /d E:\projects\nexrift\dashboard && start_dashboard.bat"
+start "App Manager Dashboard" cmd /k "cd dashboard && start_dashboard.bat"
 echo.
 echo Both services started in separate windows
-echo   - Backend: http://192.168.1.227:5000
+echo   - Backend: http://localhost:8000
 echo   - Dashboard: http://localhost:8080/dashboard.html
 echo.
 pause
@@ -86,8 +86,8 @@ echo.
 echo Checking Server Status...
 echo ===============================================
 echo.
-echo Testing Backend Server (192.168.1.227:5000)...
-curl -s http://192.168.1.227:5000/api/health >nul 2>&1
+echo Testing Backend Server (192.168.1.227:8000)...
+curl -s http://192.168.1.227:8000/api/health >nul 2>&1
 if errorlevel 1 (
     echo ❌ Backend server is NOT running
 ) else (
@@ -106,14 +106,14 @@ if errorlevel 1 (
 echo.
 echo Testing Application Status:
 echo ---------------------------
-curl -s http://192.168.1.227:5000/api/apps 2>nul | findstr "name" >nul 2>&1
+curl -s http://192.168.1.227:8000/api/apps 2>nul | findstr "name" >nul 2>&1
 if errorlevel 1 (
     echo ❌ Cannot retrieve app status (backend may be down)
 ) else (
     echo ✅ Apps API is responding
     echo.
     echo Current app status:
-    curl -s http://192.168.1.227:5000/api/apps 2>nul
+    curl -s http://192.168.1.227:8000/api/apps 2>nul
 )
 
 echo.

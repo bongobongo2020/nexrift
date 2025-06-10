@@ -1,0 +1,92 @@
+{
+  "name": "nexrift-app",
+  "version": "1.0.0",
+  "description": "NexRift - Python Application Manager",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "test": "electron src/main-test.js --dev",
+    "build": "electron-builder --publish=never",
+    "build-win": "electron-builder --win --publish=never",
+    "pack": "electron-builder --dir",
+    "build-safe": "electron-builder --win --publish=never --config.compression=store",
+    "clean": "rimraf dist",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "keywords": [
+    "python",
+    "app-manager",
+    "dashboard",
+    "system-monitor"
+  ],
+  "author": "NexRift Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4"
+  },
+  "dependencies": {
+    "electron-store": "^8.1.0",
+    "flask": "^0.2.10",
+    "node-fetch": "^3.3.2"
+  },
+  "build": {
+    "appId": "com.nexrift.app",
+    "productName": "NexRift",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "src/**/*",
+      "dashboard/**/*",
+      "node_modules/**/*",
+      "!app_manager_env/**/*",
+      "!dist/**/*",
+      "!**/*.py",
+      "!**/*.log",
+      "!**/*.tmp"
+    ],
+    "extraResources": [
+      {
+        "from": "app_manager.py",
+        "to": "backend/"
+      },
+      {
+        "from": "requirements.txt", 
+        "to": "backend/"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "artifactName": "${productName}-${version}-${arch}-Setup.${ext}",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-${arch}-Portable.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "artifactName": "${productName}-${version}-Setup.${ext}"
+    },
+    "compression": "normal",
+    "removePackageScripts": true
+  }
+}

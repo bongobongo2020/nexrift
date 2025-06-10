@@ -14,28 +14,20 @@ echo    Python App Manager Server Launcher
 echo ===============================================
 echo.
 
-rem Set the path to your project directory
-set PROJECT_DIR=E:\projects\nexrift
+rem Use relative paths - script should be run from project directory
 set ENV_NAME=app_manager_env
 set SERVER_SCRIPT=app_manager.py
 
-rem Change to project directory
-echo Changing to project directory: %PROJECT_DIR%
-cd /d "%PROJECT_DIR%"
-if errorlevel 1 (
-    echo ERROR: Could not change to project directory: %PROJECT_DIR%
-    echo Please check if the path exists and update the PROJECT_DIR variable in this script.
+rem Check if we're in the correct directory
+if not exist "%SERVER_SCRIPT%" (
+    echo ERROR: %SERVER_SCRIPT% not found in current directory
+    echo Please run this script from the NexRift project directory
+    echo Current directory: %CD%
     pause
     exit /b 1
 )
 
-rem Check if the app_manager.py file exists
-if not exist "%SERVER_SCRIPT%" (
-    echo ERROR: %SERVER_SCRIPT% not found in %PROJECT_DIR%
-    echo Please make sure the app_manager.py file is in the correct location.
-    pause
-    exit /b 1
-)
+echo ✓ Found %SERVER_SCRIPT% in current directory
 
 rem Activate the conda/virtual environment
 echo Activating environment: %ENV_NAME%
@@ -63,7 +55,7 @@ echo Environment Information:
 echo ------------------------
 python --version 2>nul || echo Python not found in PATH
 echo Environment: %ENV_NAME%
-echo Project Directory: %PROJECT_DIR%
+echo Project Directory: %CD%
 echo Server Script: %SERVER_SCRIPT%
 echo.
 
@@ -87,8 +79,8 @@ echo    Starting Python App Manager Server
 echo ===============================================
 echo.
 echo Server will be available at:
-echo   - Local:   http://localhost:5000
-echo   - Network: http://192.168.1.227:5000
+echo   - Local:   http://localhost:8000
+echo   - Network: http://[YOUR-IP]:8000
 echo.
 echo Dashboard can be accessed at:
 echo   - http://localhost:8080/dashboard.html (if dashboard server is running)
@@ -124,7 +116,7 @@ echo.
 echo Please check:
 echo 1. Environment exists: %ENV_NAME%
 echo 2. If using conda: conda env list
-echo 3. If using venv: check if %PROJECT_DIR%\%ENV_NAME%\Scripts\activate.bat exists
+echo 3. If using venv: check if %ENV_NAME%\Scripts\activate.bat exists in current directory
 echo.
 echo To create the environment manually:
 echo.
@@ -134,7 +126,6 @@ echo   conda activate %ENV_NAME%
 echo   pip install Flask Flask-CORS psutil
 echo.
 echo For virtual environment:
-echo   cd %PROJECT_DIR%
 echo   python -m venv %ENV_NAME%
 echo   %ENV_NAME%\Scripts\activate
 echo   pip install Flask Flask-CORS psutil

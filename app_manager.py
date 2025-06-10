@@ -10,6 +10,8 @@ from datetime import datetime
 import logging
 import signal
 import sys
+import socket
+import platform
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -20,41 +22,164 @@ CORS(app)  # Enable CORS for frontend communication
 
 # Global storage for running processes
 running_processes = {}
-app_configs = {
-    'chatterbox': {
-        'name': 'Chatterbox',
-        'environment': 'chatterbox-cuda',
-        'path': 'e:/projects/chatterbox-gui/comprehensive_rebuild.py',
-        'port': 5000,
-        'description': 'AI Chatbot Application',
-        'working_dir': 'e:/projects/chatterbox-gui',
-        'type': 'conda'  # Uses conda environment
-    },
-    'comfyui': {
-        'name': 'ComfyUI',
-        'environment': None,  # Uses embedded python
-        'path': 'python_embeded/python.exe',  # Relative path without ./
-        'args': ['-s', 'ComfyUI/main.py', '--windows-standalone-build', '--fast', '--listen', '--enable-cors-header'],
-        'port': 8188,
-        'description': 'UI for Stable Diffusion',
-        'working_dir': 'E:/comfy-chroma/ComfyUI_windows_portable',
-        'type': 'executable'  # Uses direct executable
-    },
-    'swarmui': {
-        'name': 'SwarmUI',
-        'environment': None,  # Uses .NET
-        'path': 'launch-windows.bat',  # Batch file launcher
-        'args': [],  # No additional args needed
-        'port': 7801,
-        'description': 'Swarm UI for Stable Diffusion',
-        'working_dir': 'D:/swarmui/swarmui',
-        'type': 'batch'  # Uses batch file
-    }
-}
+
+# Configuration file path
+CONFIG_FILE = 'apps_config.json'
+
+def load_app_configs():
+    """Load app configurations from file, or create default for this server"""
+    global app_configs
+    
+    try:
+        hostname = socket.gethostname()
+    except Exception:
+        hostname = platform.node()
+    
+    if os.path.exists(CONFIG_FILE):
+        # Load existing configuration
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                app_configs = json.load(f)
+            logger.info(f"Loaded app configurations from {CONFIG_FILE}")
+            logger.info(f"Found {len(app_configs)} apps configured for server: {hostname}")
+        except Exception as e:
+            logger.error(f"Failed to load {CONFIG_FILE}: {e}")
+            app_configs = {}
+    else:
+        # First time running on this server - check if this is a known server with default apps
+        logger.info(f"No configuration file found. Creating default config for server: {hostname}")
+        
+        # Check if this server should have default apps based on hostname
+        if hostname.lower() in ['proxmox-comfy', 'proxmox']:
+            # This is the main server with AI apps
+            app_configs = {
+                'chatterbox': {
+                    'name': 'Chatterbox',
+                    'environment': 'chatterbox-cuda',
+                    'path': 'e:/projects/chatterbox-gui/comprehensive_rebuild.py',
+                    'port': 5000,
+                    'description': 'AI Chatbot Application',
+                    'working_dir': 'e:/projects/chatterbox-gui',
+                    'type': 'conda',
+                    'output_folder': 'e:/projects/chatterbox-gui/outputs'
+                },
+                'comfyui': {
+                    'name': 'ComfyUI',
+                    'environment': None,
+                    'path': 'python_embeded/python.exe',
+                    'args': ['-s', 'ComfyUI/main.py', '--windows-standalone-build', '--fast', '--listen', '--enable-cors-header'],
+                    'port': 8188,
+                    'description': 'UI for Stable Diffusion',
+                    'working_dir': 'E:/comfy-chroma/ComfyUI_windows_portable',
+                    'type': 'executable',
+                    'output_folder': 'E:/comfy-chroma/ComfyUI_windows_portable/output'
+                },
+                'swarmui': {
+                    'name': 'SwarmUI',
+                    'environment': None,
+                    'path': 'launch-windows.bat',
+                    'args': [],
+                    'port': 7801,
+                    'description': 'Swarm UI for Stable Diffusion',
+                    'working_dir': 'D:/swarmui/swarmui',
+                    'type': 'batch',
+                    'output_folder': 'D:/swarmui/swarmui/Output'
+                }
+            }
+            logger.info(f"Created default configuration with {len(app_configs)} AI apps for {hostname}")
+        else:
+            # New/unknown server - start with empty configuration
+            app_configs = {}
+            logger.info(f"Created empty configuration for new server: {hostname}")
+        
+        # Save the initial configuration
+        save_app_configs()
+
+def save_app_configs():
+    """Save current app configurations to file"""
+    try:
+        # Create backup of existing config
+        if os.path.exists(CONFIG_FILE):
+            backup_file = f"{CONFIG_FILE}.backup"
+            import shutil
+            shutil.copy2(CONFIG_FILE, backup_file)
+            logger.info(f"Backed up existing config to {backup_file}")
+        
+        # Save current config
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(app_configs, f, indent=4)
+        
+        try:
+            hostname = socket.gethostname()
+        except Exception:
+            hostname = platform.node()
+            
+        logger.info(f"Saved {len(app_configs)} app configurations to {CONFIG_FILE} for server: {hostname}")
+        
+    except Exception as e:
+        logger.error(f"Failed to save app configurations: {e}")
+
+# Load configurations at startup
+load_app_configs()
 
 class SystemMonitor:
     def __init__(self):
         self.gpu_available = self._check_gpu_availability()
+    
+    def get_process_gpu_usage(self, pid):
+        """Get GPU usage for a specific process"""
+        try:
+            if not self.gpu_available:
+                return None
+                
+            # Try using pynvml first
+            try:
+                import pynvml
+                pynvml.nvmlInit()
+                device_count = pynvml.nvmlDeviceGetCount()
+                
+                for i in range(device_count):
+                    handle = pynvml.nvmlDeviceGetHandleByIndex(i)
+                    processes = pynvml.nvmlDeviceGetGraphicsRunningProcesses(handle)
+                    
+                    for proc in processes:
+                        if proc.pid == pid:
+                            # Get memory usage for this process
+                            memory_used = proc.usedGpuMemory
+                            # Unfortunately, pynvml doesn't give us per-process GPU utilization
+                            # We can only get total GPU utilization
+                            utilization = pynvml.nvmlDeviceGetUtilizationRates(handle)
+                            return {
+                                'memory_mb': memory_used / (1024 * 1024),
+                                'utilization_percent': utilization.gpu  # This is total GPU, not per-process
+                            }
+                            
+            except ImportError:
+                # Fall back to nvidia-smi
+                try:
+                    import subprocess
+                    result = subprocess.run([
+                        'nvidia-smi', 
+                        '--query-compute-apps=pid,used_memory',
+                        '--format=csv,noheader,nounits'
+                    ], capture_output=True, text=True, check=True)
+                    
+                    for line in result.stdout.strip().split('\n'):
+                        if line.strip():
+                            parts = line.split(',')
+                            if len(parts) >= 2 and int(parts[0].strip()) == pid:
+                                memory_mb = float(parts[1].strip())
+                                return {
+                                    'memory_mb': memory_mb,
+                                    'utilization_percent': None  # Can't get per-process utilization easily
+                                }
+                except Exception:
+                    pass
+                    
+        except Exception as e:
+            logger.debug(f"Could not get GPU usage for PID {pid}: {e}")
+            
+        return None
         
     def _check_gpu_availability(self):
         """Check if GPU monitoring is available"""
@@ -407,7 +532,8 @@ class AppManager:
             'environment': config['environment'],
             'path': config['path'],
             'port': config['port'],
-            'description': config['description']
+            'description': config['description'],
+            'output_folder': config.get('output_folder')  # Add output folder if present
         }
         
         if is_running and app_id in self.start_times:
@@ -415,6 +541,43 @@ class AppManager:
             status['uptime'] = int(uptime)
             status['started_at'] = self.start_times[app_id].isoformat()
             status['pid'] = self.processes[app_id].pid
+            
+            # Get process-specific resource usage
+            try:
+                process = self.processes[app_id]
+                proc = psutil.Process(process.pid)
+                
+                # Get memory usage
+                memory_info = proc.memory_info()
+                memory_percent = proc.memory_percent()
+                
+                # Get CPU usage (averaged over short interval)
+                cpu_percent = proc.cpu_percent(interval=0.1)
+                
+                status['resources'] = {
+                    'cpu_percent': round(cpu_percent, 1),
+                    'memory_mb': round(memory_info.rss / (1024 * 1024), 1),
+                    'memory_percent': round(memory_percent, 1)
+                }
+                
+                # Try to get GPU usage if process is using GPU
+                gpu_usage = system_monitor.get_process_gpu_usage(process.pid)
+                if gpu_usage:
+                    status['resources']['gpu_memory_mb'] = round(gpu_usage['memory_mb'], 1)
+                    status['resources']['gpu_percent'] = gpu_usage['utilization_percent']
+                else:
+                    status['resources']['gpu_memory_mb'] = None
+                    status['resources']['gpu_percent'] = None
+                
+            except (psutil.NoSuchProcess, psutil.AccessDenied, Exception) as e:
+                logger.warning(f"Could not get resource usage for {app_id}: {e}")
+                status['resources'] = {
+                    'cpu_percent': 0,
+                    'memory_mb': 0,
+                    'memory_percent': 0,
+                    'gpu_percent': None,
+                    'gpu_memory_mb': None
+                }
             
         return status
     
@@ -462,10 +625,22 @@ system_monitor = SystemMonitor()
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
+    try:
+        hostname = socket.gethostname()
+        local_ip = socket.gethostbyname(hostname)
+    except Exception:
+        hostname = platform.node()
+        local_ip = '127.0.0.1'
+    
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
-        'server': '192.168.1.227'
+        'server': local_ip,
+        'hostname': hostname,
+        'platform': platform.system(),
+        'platform_version': platform.version(),
+        'python_version': platform.python_version(),
+        'architecture': platform.architecture()[0]
     })
 
 @app.route('/api/system/metrics', methods=['GET'])
@@ -482,7 +657,20 @@ def get_system_metrics():
 @app.route('/api/apps', methods=['GET'])
 def get_all_apps():
     """Get status of all applications"""
-    return jsonify(app_manager.get_all_apps_status())
+    apps_status = app_manager.get_all_apps_status()
+    
+    # Add server info to each app
+    try:
+        current_hostname = socket.gethostname()
+    except Exception:
+        current_hostname = platform.node()
+    
+    for app in apps_status:
+        # Apps always show the current server hostname - they belong to this server
+        app['server_hostname'] = current_hostname
+        app['server_ip'] = request.host.split(':')[0]  # Current request IP
+    
+    return jsonify(apps_status)
 
 @app.route('/api/apps/<app_id>', methods=['GET'])
 def get_app_status(app_id):
@@ -584,6 +772,132 @@ def signal_handler(sig, frame):
 # Register signal handlers for graceful shutdown
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
+
+@app.route('/api/apps/config', methods=['GET'])
+def get_app_configs():
+    """Get all app configurations"""
+    return jsonify(app_configs)
+
+@app.route('/api/apps/config', methods=['POST'])
+def add_app_config():
+    """Add a new app configuration"""
+    try:
+        data = request.get_json()
+        app_id = data.get('id')
+        config = data.get('config')
+        
+        if not app_id or not config:
+            return jsonify({'success': False, 'error': 'Missing app ID or config'}), 400
+        
+        if app_id in app_configs:
+            return jsonify({'success': False, 'error': 'App already exists'}), 400
+        
+        # Validate required config fields
+        required_fields = ['name', 'path', 'port', 'description', 'working_dir', 'type']
+        for field in required_fields:
+            if field not in config:
+                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+        
+        # Automatically set the server where this app was created
+        try:
+            config['created_on_server'] = socket.gethostname()
+        except Exception:
+            config['created_on_server'] = platform.node()
+        
+        app_configs[app_id] = config
+        
+        # Save configurations to file
+        save_app_configs()
+        
+        logger.info(f"Added new app configuration: {config['name']} ({app_id}) on server {config.get('created_on_server', 'unknown')}")
+        
+        return jsonify({'success': True, 'message': 'App configuration added successfully'})
+    
+    except Exception as e:
+        logger.error(f"Error adding app config: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/apps/config/<app_id>', methods=['DELETE'])
+def remove_app_config(app_id):
+    """Remove an app configuration"""
+    try:
+        if app_id not in app_configs:
+            return jsonify({'success': False, 'error': 'App not found'}), 404
+        
+        # Stop the app if it's running
+        if app_id in running_processes:
+            stop_app(app_id)
+        
+        app_name = app_configs[app_id]['name']
+        del app_configs[app_id]
+        
+        # Save configurations to file
+        save_app_configs()
+        
+        logger.info(f"Removed app configuration: {app_name} ({app_id})")
+        
+        return jsonify({'success': True, 'message': 'App configuration removed successfully'})
+    
+    except Exception as e:
+        logger.error(f"Error removing app config: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/apps/templates', methods=['GET'])
+def get_app_templates():
+    """Get popular app templates"""
+    templates = {
+        'comfyui': {
+            'name': 'ComfyUI',
+            'description': 'UI for Stable Diffusion',
+            'type': 'executable',
+            'port': 8188,
+            'defaultPath': 'python_embeded/python.exe',
+            'defaultArgs': ['-s', 'ComfyUI/main.py', '--windows-standalone-build', '--fast', '--listen', '--enable-cors-header'],
+            'outputFolder': 'output',
+            'environment': None
+        },
+        'chatterbox': {
+            'name': 'Chatterbox',
+            'description': 'AI Chatbot Application',
+            'type': 'conda',
+            'port': 5000,
+            'defaultPath': 'comprehensive_rebuild.py',
+            'defaultArgs': [],
+            'outputFolder': 'outputs',
+            'environment': 'chatterbox-cuda'
+        },
+        'swarmui': {
+            'name': 'SwarmUI',
+            'description': 'Swarm UI for Stable Diffusion',
+            'type': 'executable',
+            'port': 7801,
+            'defaultPath': 'launch-windows.bat',
+            'defaultArgs': [],
+            'outputFolder': 'Output',
+            'environment': None
+        },
+        'automatic1111': {
+            'name': 'Automatic1111',
+            'description': 'Web UI for Stable Diffusion',
+            'type': 'executable',
+            'port': 7860,
+            'defaultPath': 'webui-user.bat',
+            'defaultArgs': [],
+            'outputFolder': 'outputs',
+            'environment': None
+        },
+        'invokeai': {
+            'name': 'InvokeAI',
+            'description': 'InvokeAI Stable Diffusion Toolkit',
+            'type': 'conda',
+            'port': 9090,
+            'defaultPath': 'scripts/invokeai-web.py',
+            'defaultArgs': [],
+            'outputFolder': 'outputs',
+            'environment': 'invokeai'
+        }
+    }
+    return jsonify(templates)
 
 if __name__ == '__main__':
     logger.info("Starting Python App Management Server with System Monitoring...")

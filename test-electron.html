@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Electron Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 50px;
+            background: linear-gradient(135deg, #1e293b, #7c3aed);
+            color: white;
+            text-align: center;
+        }
+        .container {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+        }
+        .success { background: rgba(34, 197, 94, 0.2); }
+        .error { background: rgba(239, 68, 68, 0.2); }
+        .warning { background: rgba(245, 158, 11, 0.2); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 NexRift Electron Test</h1>
+        <p>If you can see this page, Electron is working!</p>
+        
+        <div id="electron-check" class="status">
+            Checking Electron APIs...
+        </div>
+        
+        <div id="backend-check" class="status">
+            Checking backend connection...
+        </div>
+        
+        <div id="dashboard-check" class="status">
+            Checking dashboard files...
+        </div>
+
+        <h3>Next Steps:</h3>
+        <ol style="text-align: left; max-width: 400px; margin: 0 auto;">
+            <li>✓ Electron is working</li>
+            <li>Start your Python backend (<code>python app_manager.py</code>)</li>
+            <li>Check that <code>dashboard/dashboard.html</code> exists</li>
+            <li>Restart Electron app</li>
+        </ol>
+    </div>
+
+    <script>
+        // Test Electron APIs
+        const electronCheck = document.getElementById('electron-check');
+        if (window.electronAPI) {
+            electronCheck.textContent = '✓ Electron APIs available';
+            electronCheck.className = 'status success';
+        } else {
+            electronCheck.textContent = '❌ Electron APIs not found (this is OK for web testing)';
+            electronCheck.className = 'status warning';
+        }
+
+        // Test backend connection
+        const backendCheck = document.getElementById('backend-check');
+        const testBackend = async () => {
+            const servers = ['127.0.0.1:8000', '192.168.1.227:8000'];
+            
+            for (const server of servers) {
+                try {
+                    const response = await fetch(`http://${server}/api/health`);
+                    if (response.ok) {
+                        backendCheck.textContent = `✓ Backend found at ${server}`;
+                        backendCheck.className = 'status success';
+                        return;
+                    }
+                } catch (error) {
+                    console.log(`Backend not found at ${server}`);
+                }
+            }
+            
+            backendCheck.textContent = '❌ Backend not running on either port';
+            backendCheck.className = 'status error';
+        };
+
+        testBackend();
+
+        // Check dashboard file
+        const dashboardCheck = document.getElementById('dashboard-check');
+        fetch('./dashboard/dashboard.html')
+            .then(response => {
+                if (response.ok) {
+                    dashboardCheck.textContent = '✓ Dashboard file accessible';
+                    dashboardCheck.className = 'status success';
+                } else {
+                    dashboardCheck.textContent = '❌ Dashboard file not found at ./dashboard/dashboard.html';
+                    dashboardCheck.className = 'status error';
+                }
+            })
+            .catch(error => {
+                dashboardCheck.textContent = '❌ Cannot access dashboard file - this is normal';
+                dashboardCheck.className = 'status warning';
+                console.log('Dashboard fetch error (this is expected):', error);
+            });
+
+        console.log('Electron test page loaded');
+        console.log('Current location:', window.location.href);
+        console.log('Electron API available:', !!window.electronAPI);
+    </script>
+</body>
+</html>

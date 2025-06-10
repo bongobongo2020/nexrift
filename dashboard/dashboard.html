@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Python App Dashboard with System Monitor</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.tailwindcss.com; connect-src 'self' http://*:* https://*:* ws://*:* wss://*:*; img-src 'self' data:;">
+    <title>NexRift Dashboard</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -117,6 +118,41 @@
             h('line', { x1: 12, y1: 8, x2: 12, y2: 16 })
         );
 
+        const FolderIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+            h('path', { d: 'M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z' })
+        );
+
+        const SettingsIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+            h('circle', { cx: 12, cy: 12, r: 3 }),
+            h('path', { d: 'M12 1v6m0 6v6m11-7h-6m-6 0H1' })
+        );
+
+        const PlusIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+            h('line', { x1: 12, y1: 5, x2: 12, y2: 19 }),
+            h('line', { x1: 5, y1: 12, x2: 19, y2: 12 })
+        );
+
+        const TrashIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+            h('polyline', { points: '3,6 5,6 21,6' }),
+            h('path', { d: 'M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2' })
+        );
+
+        const FolderOpenIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+            h('path', { d: 'M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z' }),
+            h('path', { d: 'M3 7l3 9h15l-3-9H3z' })
+        );
+
+        const DownloadIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+            h('path', { d: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4' }),
+            h('polyline', { points: '7,10 12,15 17,10' }),
+            h('line', { x1: 12, y1: 15, x2: 12, y2: 3 })
+        );
+
+        const XIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+            h('line', { x1: 18, y1: 6, x2: 6, y2: 18 }),
+            h('line', { x1: 6, y1: 6, x2: 18, y2: 18 })
+        );
+
         const ThermometerIcon = () => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
             h('path', { d: 'M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z' })
         );
@@ -144,6 +180,837 @@
                         borderRadius: '9999px'
                     }
                 })
+            );
+        };
+
+        // Mini Resource Widget Component
+        const MiniResourceWidget = ({ resources }) => {
+            if (!resources) return null;
+
+            const getUsageColor = (percent) => {
+                if (percent < 50) return 'green';
+                if (percent < 80) return 'yellow';
+                return 'red';
+            };
+
+            return h('div', { 
+                className: "bg-slate-800/50 rounded-lg p-3 mt-3",
+                style: { 
+                    background: 'rgba(30, 41, 59, 0.5)',
+                    borderRadius: '8px',
+                    padding: '12px'
+                }
+            },
+                h('div', { className: "flex items-center space-x-2 mb-2" },
+                    h('span', { 
+                        className: "text-slate-300 text-xs font-medium",
+                        style: { color: '#cbd5e1', fontSize: '11px' }
+                    }, 'RESOURCE USAGE')
+                ),
+                h('div', { className: "space-y-2" },
+                    // CPU Usage
+                    h('div', { className: "flex items-center justify-between" },
+                        h('div', { className: "flex items-center space-x-1" },
+                            h(CpuIcon, { 
+                                className: "w-3 h-3 text-blue-400",
+                                style: { color: '#60a5fa', width: '12px', height: '12px' }
+                            }),
+                            h('span', { 
+                                className: "text-white text-xs",
+                                style: { fontSize: '11px' }
+                            }, 'CPU')
+                        ),
+                        h('span', { 
+                            className: "text-white text-xs font-mono",
+                            style: { fontSize: '11px', fontFamily: 'monospace' }
+                        }, `${resources.cpu_percent}%`)
+                    ),
+                    h(ProgressBar, { 
+                        percent: resources.cpu_percent, 
+                        color: getUsageColor(resources.cpu_percent),
+                        height: 4
+                    }),
+
+                    // Memory Usage
+                    h('div', { className: "flex items-center justify-between" },
+                        h('div', { className: "flex items-center space-x-1" },
+                            h(MemoryIcon, { 
+                                className: "w-3 h-3 text-green-400",
+                                style: { color: '#4ade80', width: '12px', height: '12px' }
+                            }),
+                            h('span', { 
+                                className: "text-white text-xs",
+                                style: { fontSize: '11px' }
+                            }, 'RAM')
+                        ),
+                        h('span', { 
+                            className: "text-white text-xs font-mono",
+                            style: { fontSize: '11px', fontFamily: 'monospace' }
+                        }, `${resources.memory_mb}MB`)
+                    ),
+                    h(ProgressBar, { 
+                        percent: resources.memory_percent, 
+                        color: getUsageColor(resources.memory_percent),
+                        height: 4
+                    }),
+
+                    // GPU Usage (if available)
+                    (resources.gpu_memory_mb || resources.gpu_percent) && h('div', null,
+                        h('div', { className: "flex items-center justify-between" },
+                            h('div', { className: "flex items-center space-x-1" },
+                                h(GpuIcon, { 
+                                    className: "w-3 h-3 text-orange-400",
+                                    style: { color: '#fb923c', width: '12px', height: '12px' }
+                                }),
+                                h('span', { 
+                                    className: "text-white text-xs",
+                                    style: { fontSize: '11px' }
+                                }, 'VRAM')
+                            ),
+                            h('span', { 
+                                className: "text-white text-xs font-mono",
+                                style: { fontSize: '11px', fontFamily: 'monospace' }
+                            }, resources.gpu_memory_mb ? `${resources.gpu_memory_mb}MB` : 
+                                (resources.gpu_percent ? `${resources.gpu_percent}%` : 'N/A'))
+                        ),
+                        resources.gpu_percent && h(ProgressBar, { 
+                            percent: resources.gpu_percent, 
+                            color: getUsageColor(resources.gpu_percent),
+                            height: 4
+                        })
+                    )
+                )
+            );
+        };
+
+        // App Management Modal Component
+        const AppManagementModal = ({ isOpen, onClose, onRefresh, getServerAddress, isLocalServer }) => {
+            const [templates, setTemplates] = useState({});
+            const [loading, setLoading] = useState(false);
+            const [selectedTemplate, setSelectedTemplate] = useState('');
+            const [appConfig, setAppConfig] = useState({
+                name: '',
+                description: '',
+                working_dir: '',
+                path: '',
+                port: 8000,
+                environment: '',
+                type: 'executable'
+            });
+
+            useEffect(() => {
+                if (isOpen) {
+                    fetchTemplates();
+                }
+            }, [isOpen]);
+
+            const fetchTemplates = async () => {
+                try {
+                    const serverAddress = getServerAddress();
+                    const response = await fetch(`http://${serverAddress}/api/apps/templates`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        setTemplates(data);
+                    } else {
+                        console.warn('Templates endpoint not available on this server');
+                        // Provide fallback templates
+                        setTemplates({
+                            'comfyui': {
+                                'name': 'ComfyUI',
+                                'description': 'UI for Stable Diffusion',
+                                'type': 'executable',
+                                'port': 8188,
+                                'defaultPath': 'python_embeded/python.exe',
+                                'defaultArgs': ['-s', 'ComfyUI/main.py', '--windows-standalone-build', '--fast', '--listen', '--enable-cors-header'],
+                                'outputFolder': 'output',
+                                'environment': null
+                            },
+                            'chatterbox': {
+                                'name': 'Chatterbox',
+                                'description': 'AI Chatbot Application',
+                                'type': 'conda',
+                                'port': 5000,
+                                'defaultPath': 'comprehensive_rebuild.py',
+                                'defaultArgs': [],
+                                'outputFolder': 'outputs',
+                                'environment': 'chatterbox-cuda'
+                            },
+                            'swarmui': {
+                                'name': 'SwarmUI',
+                                'description': 'Swarm UI for Stable Diffusion',
+                                'type': 'executable',
+                                'port': 7801,
+                                'defaultPath': 'launch-windows.bat',
+                                'defaultArgs': [],
+                                'outputFolder': 'Output',
+                                'environment': null
+                            }
+                        });
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch templates:', err);
+                    // Provide fallback templates for offline/error scenarios
+                    setTemplates({
+                        'comfyui': {
+                            'name': 'ComfyUI',
+                            'description': 'UI for Stable Diffusion',
+                            'type': 'executable',
+                            'port': 8188,
+                            'defaultPath': 'python_embeded/python.exe',
+                            'defaultArgs': ['-s', 'ComfyUI/main.py', '--windows-standalone-build', '--fast', '--listen', '--enable-cors-header'],
+                            'outputFolder': 'output',
+                            'environment': null
+                        },
+                        'automatic1111': {
+                            'name': 'Automatic1111',
+                            'description': 'Web UI for Stable Diffusion',
+                            'type': 'executable',
+                            'port': 7860,
+                            'defaultPath': 'webui-user.bat',
+                            'defaultArgs': [],
+                            'outputFolder': 'outputs',
+                            'environment': null
+                        }
+                    });
+                }
+            };
+
+            const selectTemplate = (templateId) => {
+                const template = templates[templateId];
+                if (template) {
+                    setSelectedTemplate(templateId);
+                    setAppConfig({
+                        name: template.name,
+                        description: template.description,
+                        working_dir: '',
+                        path: template.defaultPath,
+                        port: template.port,
+                        environment: template.environment || '',
+                        type: template.type,
+                        args: template.defaultArgs || []
+                    });
+                }
+            };
+
+            const addApp = async () => {
+                if (!appConfig.name || !appConfig.working_dir || !appConfig.path) {
+                    alert('Please fill in all required fields (Name, Working Directory, Path)');
+                    return;
+                }
+
+                setLoading(true);
+                try {
+                    const serverAddress = getServerAddress();
+                    const appId = appConfig.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    
+                    const config = {
+                        name: appConfig.name,
+                        description: appConfig.description,
+                        working_dir: appConfig.working_dir,
+                        path: appConfig.path,
+                        port: parseInt(appConfig.port),
+                        environment: appConfig.environment || null,
+                        type: appConfig.type
+                    };
+
+                    if (appConfig.args && appConfig.args.length > 0) {
+                        config.args = appConfig.args;
+                    }
+
+                    const response = await fetch(`http://${serverAddress}/api/apps/config`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: appId, config })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success) {
+                            alert('App added successfully!');
+                            onRefresh();
+                            onClose();
+                            resetForm();
+                        } else {
+                            alert(`Failed to add app: ${result.error}`);
+                        }
+                    } else if (response.status === 404) {
+                        alert('This server does not support adding apps remotely. Please add apps directly to the backend configuration.');
+                    } else if (response.status === 400) {
+                        alert(`Server Error: ${response.status} - The remote server doesn't support app management. To add apps remotely, you need to update the backend server with the latest app_manager.py that includes the new API endpoints.`);
+                    } else {
+                        alert(`Server error: ${response.status} ${response.statusText}`);
+                    }
+                } catch (err) {
+                    console.error('Failed to add app:', err);
+                    alert('Failed to add app. Check connection to backend.');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const resetForm = () => {
+                setSelectedTemplate('');
+                setAppConfig({
+                    name: '',
+                    description: '',
+                    working_dir: '',
+                    path: '',
+                    port: 8000,
+                    environment: '',
+                    type: 'executable'
+                });
+            };
+
+            if (!isOpen) return null;
+
+            return h('div', {
+                className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50",
+                style: { 
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
+                }
+            },
+                h('div', {
+                    className: "bg-slate-800 rounded-xl p-6 w-full max-w-4xl max-h-96 overflow-y-auto",
+                    style: {
+                        backgroundColor: '#1e293b',
+                        borderRadius: '12px',
+                        padding: '24px',
+                        width: '90%',
+                        maxWidth: '800px',
+                        maxHeight: '90vh',
+                        overflowY: 'auto'
+                    }
+                },
+                    // Header
+                    h('div', { className: "flex items-center justify-between mb-6" },
+                        h('h2', { 
+                            className: "text-2xl font-bold text-white",
+                            style: { color: 'white', fontSize: '24px', fontWeight: 'bold' }
+                        }, 'App Management'),
+                        h('button', {
+                            onClick: onClose,
+                            className: "text-gray-400 hover:text-white",
+                            style: { 
+                                background: 'none',
+                                border: 'none',
+                                color: '#9ca3af',
+                                cursor: 'pointer'
+                            }
+                        }, h(XIcon))
+                    ),
+
+                    // Warning for all servers about app management support
+                    h('div', { 
+                        className: "mb-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg",
+                        style: {
+                            marginBottom: '16px',
+                            padding: '16px',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            border: '1px solid rgba(59, 130, 246, 0.2)',
+                            borderRadius: '8px'
+                        }
+                    },
+                        h('p', { 
+                            className: "text-blue-400 text-sm",
+                            style: { color: '#60a5fa', fontSize: '14px' }
+                        }, 
+                            isLocalServer() ? 
+                                '💡 Connected to local server. If adding apps fails, make sure your local backend has the latest app_manager.py with app management API endpoints.' :
+                                '⚠️ Connected to remote server. Adding apps may not work if the server doesn\'t support remote app management. You may need to update the remote server\'s app_manager.py.'
+                        )
+                    ),
+
+                    // Templates Section
+                    h('div', { className: "mb-6" },
+                        h('h3', { 
+                            className: "text-lg font-semibold text-white mb-4",
+                            style: { color: 'white', fontSize: '18px', fontWeight: '600', marginBottom: '16px' }
+                        }, 'Popular Apps'),
+                        
+                        h('div', { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6" },
+                            Object.entries(templates).map(([templateId, template]) =>
+                                h('div', {
+                                    key: templateId,
+                                    onClick: () => selectTemplate(templateId),
+                                    className: `bg-slate-700 rounded-lg p-4 cursor-pointer border-2 transition-colors ${
+                                        selectedTemplate === templateId ? 'border-blue-500' : 'border-transparent'
+                                    }`,
+                                    style: {
+                                        backgroundColor: '#334155',
+                                        borderRadius: '8px',
+                                        padding: '16px',
+                                        cursor: 'pointer',
+                                        border: selectedTemplate === templateId ? '2px solid #3b82f6' : '2px solid transparent'
+                                    }
+                                },
+                                    h('div', { className: "flex items-center space-x-3 mb-2" },
+                                        h('div', { 
+                                            className: "w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center",
+                                            style: { 
+                                                width: '32px', 
+                                                height: '32px', 
+                                                backgroundColor: 'rgba(59, 130, 246, 0.2)', 
+                                                borderRadius: '8px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }
+                                        },
+                                            h(DownloadIcon, { className: "w-4 h-4 text-blue-400" })
+                                        ),
+                                        h('div', null,
+                                            h('h4', { 
+                                                className: "text-white font-medium",
+                                                style: { color: 'white', fontWeight: '500' }
+                                            }, template.name),
+                                            h('p', { 
+                                                className: "text-slate-300 text-sm",
+                                                style: { color: '#cbd5e1', fontSize: '14px' }
+                                            }, template.description)
+                                        )
+                                    ),
+                                    h('div', { className: "text-xs text-slate-400" },
+                                        `Port: ${template.port} • Type: ${template.type}`
+                                    )
+                                )
+                            )
+                        )
+                    ),
+
+                    // Configuration Form
+                    selectedTemplate && h('div', { className: "mb-6" },
+                        h('h3', { 
+                            className: "text-lg font-semibold text-white mb-4",
+                            style: { color: 'white', fontSize: '18px', fontWeight: '600', marginBottom: '16px' }
+                        }, 'Configure App'),
+                        
+                        h('div', { className: "grid grid-cols-1 md:grid-cols-2 gap-4" },
+                            // Name
+                            h('div', null,
+                                h('label', { className: "block text-white mb-2" }, 'App Name *'),
+                                h('input', {
+                                    type: 'text',
+                                    value: appConfig.name,
+                                    onChange: (e) => setAppConfig({ ...appConfig, name: e.target.value }),
+                                    className: "w-full bg-slate-600 text-white rounded px-3 py-2",
+                                    style: {
+                                        width: '100%',
+                                        backgroundColor: '#475569',
+                                        color: 'white',
+                                        borderRadius: '6px',
+                                        padding: '8px 12px',
+                                        border: 'none'
+                                    }
+                                })
+                            ),
+                            
+                            // Port
+                            h('div', null,
+                                h('label', { className: "block text-white mb-2" }, 'Port *'),
+                                h('input', {
+                                    type: 'number',
+                                    value: appConfig.port,
+                                    onChange: (e) => setAppConfig({ ...appConfig, port: e.target.value }),
+                                    className: "w-full bg-slate-600 text-white rounded px-3 py-2",
+                                    style: {
+                                        width: '100%',
+                                        backgroundColor: '#475569',
+                                        color: 'white',
+                                        borderRadius: '6px',
+                                        padding: '8px 12px',
+                                        border: 'none'
+                                    }
+                                })
+                            ),
+                            
+                            // Working Directory
+                            h('div', { className: "md:col-span-2" },
+                                h('label', { className: "block text-white mb-2" }, 'Working Directory *'),
+                                h('div', { className: "flex space-x-2" },
+                                    h('input', {
+                                        type: 'text',
+                                        value: appConfig.working_dir,
+                                        onChange: (e) => setAppConfig({ ...appConfig, working_dir: e.target.value }),
+                                        placeholder: 'C:/path/to/app/folder',
+                                        className: "flex-1 bg-slate-600 text-white rounded px-3 py-2",
+                                        style: {
+                                            backgroundColor: '#475569',
+                                            color: 'white',
+                                            borderRadius: '6px',
+                                            padding: '8px 12px',
+                                            border: 'none',
+                                            flex: 1
+                                        }
+                                    }),
+                                    h('button', {
+                                        onClick: () => {
+                                            if (window.electronAPI) {
+                                                window.electronAPI.selectFolder().then(folder => {
+                                                    if (folder) {
+                                                        setAppConfig({ ...appConfig, working_dir: folder });
+                                                    }
+                                                });
+                                            } else {
+                                                alert('Folder selection only available in Electron app');
+                                            }
+                                        },
+                                        className: "bg-blue-600 text-white px-4 py-2 rounded",
+                                        style: {
+                                            backgroundColor: '#2563eb',
+                                            color: 'white',
+                                            padding: '8px 16px',
+                                            borderRadius: '6px',
+                                            border: 'none',
+                                            cursor: 'pointer'
+                                        }
+                                    }, h(FolderOpenIcon))
+                                )
+                            ),
+                            
+                            // Executable Path
+                            h('div', { className: "md:col-span-2" },
+                                h('label', { className: "block text-white mb-2" }, 'Executable Path *'),
+                                h('input', {
+                                    type: 'text',
+                                    value: appConfig.path,
+                                    onChange: (e) => setAppConfig({ ...appConfig, path: e.target.value }),
+                                    placeholder: 'python.exe or script.py or app.bat',
+                                    className: "w-full bg-slate-600 text-white rounded px-3 py-2",
+                                    style: {
+                                        width: '100%',
+                                        backgroundColor: '#475569',
+                                        color: 'white',
+                                        borderRadius: '6px',
+                                        padding: '8px 12px',
+                                        border: 'none'
+                                    }
+                                })
+                            ),
+                            
+                            // Environment (optional)
+                            h('div', null,
+                                h('label', { className: "block text-white mb-2" }, 'Environment (optional)'),
+                                h('input', {
+                                    type: 'text',
+                                    value: appConfig.environment,
+                                    onChange: (e) => setAppConfig({ ...appConfig, environment: e.target.value }),
+                                    placeholder: 'conda environment name',
+                                    className: "w-full bg-slate-600 text-white rounded px-3 py-2",
+                                    style: {
+                                        width: '100%',
+                                        backgroundColor: '#475569',
+                                        color: 'white',
+                                        borderRadius: '6px',
+                                        padding: '8px 12px',
+                                        border: 'none'
+                                    }
+                                })
+                            ),
+                            
+                        )
+                    ),
+
+                    // Actions
+                    h('div', { 
+                        className: "flex justify-end space-x-3",
+                        style: { display: 'flex', justifyContent: 'flex-end', gap: '12px' }
+                    },
+                        h('button', {
+                            onClick: () => { resetForm(); onClose(); },
+                            className: "px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700",
+                            style: {
+                                padding: '8px 16px',
+                                backgroundColor: '#4b5563',
+                                color: 'white',
+                                borderRadius: '6px',
+                                border: 'none',
+                                cursor: 'pointer'
+                            }
+                        }, 'Cancel'),
+                        selectedTemplate && h('button', {
+                            onClick: addApp,
+                            disabled: loading || !appConfig.name || !appConfig.working_dir || !appConfig.path,
+                            className: "px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-500",
+                            style: {
+                                padding: '8px 16px',
+                                backgroundColor: loading || !appConfig.name || !appConfig.working_dir || !appConfig.path ? '#6b7280' : '#16a34a',
+                                color: 'white',
+                                borderRadius: '6px',
+                                border: 'none',
+                                cursor: loading || !appConfig.name || !appConfig.working_dir || !appConfig.path ? 'not-allowed' : 'pointer'
+                            }
+                        }, loading ? 'Adding...' : 'Add App')
+                    )
+                )
+            );
+        };
+
+        // Settings Modal Component
+        const SettingsModal = ({ isOpen, onClose, settings, onSave }) => {
+            const [localSettings, setLocalSettings] = useState(settings);
+            const [newServer, setNewServer] = useState({ name: '', address: '' });
+
+            useEffect(() => {
+                setLocalSettings(settings);
+            }, [settings]);
+
+            if (!isOpen) return null;
+
+            const handleSave = () => {
+                onSave(localSettings);
+                onClose();
+            };
+
+            const addServer = () => {
+                if (newServer.name && newServer.address) {
+                    // Clean the address - remove any protocol prefix and whitespace
+                    let cleanAddress = newServer.address.trim();
+                    cleanAddress = cleanAddress.replace(/^https?:\/\//, ''); // Remove http:// or https://
+                    cleanAddress = cleanAddress.replace(/\/$/, ''); // Remove trailing slash
+                    
+                    const server = {
+                        id: Date.now().toString(),
+                        name: newServer.name,
+                        address: cleanAddress,
+                        active: false,
+                        autoConnect: false
+                    };
+                    setLocalSettings({
+                        ...localSettings,
+                        servers: [...localSettings.servers, server]
+                    });
+                    setNewServer({ name: '', address: '' });
+                }
+            };
+
+            const removeServer = (serverId) => {
+                setLocalSettings({
+                    ...localSettings,
+                    servers: localSettings.servers.filter(s => s.id !== serverId)
+                });
+            };
+
+            const updateServer = (serverId, updates) => {
+                setLocalSettings({
+                    ...localSettings,
+                    servers: localSettings.servers.map(s => 
+                        s.id === serverId ? { ...s, ...updates } : s
+                    )
+                });
+            };
+
+            return h('div', {
+                className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50",
+                style: { 
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
+                }
+            },
+                h('div', {
+                    className: "bg-slate-800 rounded-xl p-6 w-full max-w-2xl max-h-96 overflow-y-auto",
+                    style: {
+                        backgroundColor: '#1e293b',
+                        borderRadius: '12px',
+                        padding: '24px',
+                        width: '90%',
+                        maxWidth: '600px',
+                        maxHeight: '80vh',
+                        overflowY: 'auto'
+                    }
+                },
+                    // Header
+                    h('div', { className: "flex items-center justify-between mb-6" },
+                        h('h2', { 
+                            className: "text-2xl font-bold text-white",
+                            style: { color: 'white', fontSize: '24px', fontWeight: 'bold' }
+                        }, 'Settings'),
+                        h('button', {
+                            onClick: onClose,
+                            className: "text-gray-400 hover:text-white",
+                            style: { 
+                                background: 'none',
+                                border: 'none',
+                                color: '#9ca3af',
+                                cursor: 'pointer'
+                            }
+                        }, h(XIcon))
+                    ),
+
+                    // Backend Servers Section
+                    h('div', { className: "mb-6" },
+                        h('h3', { 
+                            className: "text-lg font-semibold text-white mb-4",
+                            style: { color: 'white', fontSize: '18px', fontWeight: '600', marginBottom: '16px' }
+                        }, 'Backend Servers'),
+
+                        // Server List
+                        h('div', { className: "space-y-3 mb-4" },
+                            localSettings.servers.map(server =>
+                                h('div', {
+                                    key: server.id,
+                                    className: "bg-slate-700 rounded-lg p-4 flex items-center justify-between",
+                                    style: {
+                                        backgroundColor: '#334155',
+                                        borderRadius: '8px',
+                                        padding: '16px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between'
+                                    }
+                                },
+                                    h('div', { className: "flex-1" },
+                                        h('div', { className: "flex items-center space-x-3" },
+                                            h('input', {
+                                                type: 'radio',
+                                                name: 'activeServer',
+                                                checked: localSettings.activeServerId === server.id,
+                                                onChange: () => setLocalSettings({
+                                                    ...localSettings,
+                                                    activeServerId: server.id
+                                                }),
+                                                className: "text-blue-500"
+                                            }),
+                                            h('div', null,
+                                                h('div', { 
+                                                    className: "text-white font-medium",
+                                                    style: { color: 'white', fontWeight: '500' }
+                                                }, server.name),
+                                                h('div', { 
+                                                    className: "text-gray-400 text-sm",
+                                                    style: { color: '#9ca3af', fontSize: '14px' }
+                                                }, server.address)
+                                            )
+                                        )
+                                    ),
+                                    h('button', {
+                                        onClick: () => removeServer(server.id),
+                                        className: "text-red-400 hover:text-red-300 ml-4",
+                                        style: {
+                                            background: 'none',
+                                            border: 'none',
+                                            color: '#f87171',
+                                            cursor: 'pointer'
+                                        }
+                                    }, h(TrashIcon))
+                                )
+                            )
+                        ),
+
+                        // Add New Server
+                        h('div', {
+                            className: "bg-slate-700 rounded-lg p-4",
+                            style: {
+                                backgroundColor: '#334155',
+                                borderRadius: '8px',
+                                padding: '16px'
+                            }
+                        },
+                            h('h4', { 
+                                className: "text-white font-medium mb-3",
+                                style: { color: 'white', fontWeight: '500', marginBottom: '12px' }
+                            }, 'Add New Server'),
+                            h('div', { className: "space-y-3" },
+                                h('input', {
+                                    type: 'text',
+                                    placeholder: 'Server Name',
+                                    value: newServer.name,
+                                    onChange: (e) => setNewServer({ ...newServer, name: e.target.value }),
+                                    className: "w-full bg-slate-600 text-white rounded px-3 py-2",
+                                    style: {
+                                        width: '100%',
+                                        backgroundColor: '#475569',
+                                        color: 'white',
+                                        borderRadius: '6px',
+                                        padding: '8px 12px',
+                                        border: 'none'
+                                    }
+                                }),
+                                h('input', {
+                                    type: 'text',
+                                    placeholder: 'Server Address (e.g., 192.168.1.100:8000 or http://192.168.1.100:8000)',
+                                    value: newServer.address,
+                                    onChange: (e) => setNewServer({ ...newServer, address: e.target.value }),
+                                    className: "w-full bg-slate-600 text-white rounded px-3 py-2",
+                                    style: {
+                                        width: '100%',
+                                        backgroundColor: '#475569',
+                                        color: 'white',
+                                        borderRadius: '6px',
+                                        padding: '8px 12px',
+                                        border: 'none'
+                                    }
+                                }),
+                                h('button', {
+                                    onClick: addServer,
+                                    disabled: !newServer.name || !newServer.address,
+                                    className: "flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white px-4 py-2 rounded",
+                                    style: {
+                                        backgroundColor: (!newServer.name || !newServer.address) ? '#6b7280' : '#2563eb',
+                                        color: 'white',
+                                        padding: '8px 16px',
+                                        borderRadius: '6px',
+                                        border: 'none',
+                                        cursor: (!newServer.name || !newServer.address) ? 'not-allowed' : 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px'
+                                    }
+                                },
+                                    h(PlusIcon),
+                                    h('span', null, 'Add Server')
+                                )
+                            )
+                        )
+                    ),
+
+                    // Actions
+                    h('div', { 
+                        className: "flex justify-end space-x-3",
+                        style: { display: 'flex', justifyContent: 'flex-end', gap: '12px' }
+                    },
+                        h('button', {
+                            onClick: onClose,
+                            className: "px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700",
+                            style: {
+                                padding: '8px 16px',
+                                backgroundColor: '#4b5563',
+                                color: 'white',
+                                borderRadius: '6px',
+                                border: 'none',
+                                cursor: 'pointer'
+                            }
+                        }, 'Cancel'),
+                        h('button', {
+                            onClick: handleSave,
+                            className: "px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700",
+                            style: {
+                                padding: '8px 16px',
+                                backgroundColor: '#2563eb',
+                                color: 'white',
+                                borderRadius: '6px',
+                                border: 'none',
+                                cursor: 'pointer'
+                            }
+                        }, 'Save Settings')
+                    )
+                )
             );
         };
 
@@ -376,10 +1243,46 @@
             const [loading, setLoading] = useState(true);
             const [error, setError] = useState(null);
             const [metricsError, setMetricsError] = useState(null);
-            const serverAddress = '192.168.1.227:8000';
+            const [isElectron, setIsElectron] = useState(false);
+            const [showSettings, setShowSettings] = useState(false);
+            const [showAppManagement, setShowAppManagement] = useState(false);
+            const [settings, setSettings] = useState({
+                servers: [
+                    { id: 'local', name: 'Local Server', address: '127.0.0.1:8000', active: true },
+                    { id: 'alien', name: 'Alien Computer', address: '192.168.1.136:8000', active: false },
+                    { id: 'proxmox', name: 'Proxmox Computer', address: '192.168.1.227:8000', active: false }
+                ],
+                activeServerId: 'local'
+            });
+            const [currentServer, setCurrentServer] = useState(null);
+            const [serverInfo, setServerInfo] = useState({});
+            
+            // Get current server address
+            const getServerAddress = () => {
+                const activeServer = settings.servers.find(s => s.id === settings.activeServerId);
+                return activeServer ? activeServer.address : '127.0.0.1:8000';
+            };
+
+            const fetchServerInfo = async () => {
+                try {
+                    const serverAddress = getServerAddress();
+                    const response = await fetch(`http://${serverAddress}/api/health`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    const data = await response.json();
+                    setServerInfo(data);
+                    setCurrentServer(settings.servers.find(s => s.id === settings.activeServerId));
+                    return true;
+                } catch (err) {
+                    console.error('Failed to fetch server info:', err);
+                    setServerInfo({ error: `Cannot connect to ${getServerAddress()}` });
+                    setCurrentServer(settings.servers.find(s => s.id === settings.activeServerId));
+                    return false;
+                }
+            };
 
             const fetchAppsStatus = async () => {
                 try {
+                    const serverAddress = getServerAddress();
                     const response = await fetch(`http://${serverAddress}/api/apps`);
                     if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     const data = await response.json();
@@ -389,12 +1292,13 @@
                 } catch (err) {
                     console.error('Failed to fetch apps:', err);
                     setServerStatus('disconnected');
-                    setError(`Cannot connect to backend server at ${serverAddress}. Make sure it's running.`);
+                    setError(`Cannot connect to backend server at ${getServerAddress()}. Make sure it's running.`);
                 }
             };
 
             const fetchSystemMetrics = async () => {
                 try {
+                    const serverAddress = getServerAddress();
                     const response = await fetch(`http://${serverAddress}/api/system/metrics`);
                     if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     const data = await response.json();
@@ -406,19 +1310,108 @@
                 }
             };
 
+            const loadSettings = async () => {
+                if (window.electronAPI) {
+                    try {
+                        const electronSettings = await window.electronAPI.getSettings();
+                        if (electronSettings && electronSettings.servers) {
+                            setSettings(electronSettings);
+                        }
+                    } catch (err) {
+                        console.warn('Failed to load Electron settings:', err);
+                    }
+                } else {
+                    // Web mode - use localStorage fallback
+                    try {
+                        const savedSettings = localStorage.getItem('nexrift-settings');
+                        if (savedSettings) {
+                            const parsedSettings = JSON.parse(savedSettings);
+                            if (parsedSettings && parsedSettings.servers) {
+                                setSettings(parsedSettings);
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('Failed to load localStorage settings:', err);
+                    }
+                }
+            };
+
+            const saveSettings = async (newSettings) => {
+                setSettings(newSettings);
+                if (window.electronAPI) {
+                    try {
+                        await window.electronAPI.saveSettings(newSettings);
+                    } catch (err) {
+                        console.warn('Failed to save Electron settings:', err);
+                    }
+                } else {
+                    // Web mode - use localStorage fallback
+                    try {
+                        localStorage.setItem('nexrift-settings', JSON.stringify(newSettings));
+                    } catch (err) {
+                        console.warn('Failed to save localStorage settings:', err);
+                    }
+                }
+                // Clear old server info and immediately refresh from new server
+                setServerInfo({});
+                setCurrentServer(null);
+                setSystemMetrics(null);
+                setApps([]);
+                setServerStatus('connecting');
+                setError(null);
+                setMetricsError(null);
+                
+                // Immediate refresh without delay
+                setTimeout(async () => {
+                    console.log('Auto-refreshing after server switch...');
+                    await fetchServerInfo();
+                    fetchAppsStatus();
+                    fetchSystemMetrics();
+                }, 100); // Minimal delay to ensure state updates
+            };
+
             useEffect(() => {
-                fetchAppsStatus();
-                fetchSystemMetrics();
-                setLoading(false);
+                // Check if running in Electron
+                setIsElectron(!!window.electronAPI);
+                
+                // Load settings first, then fetch data
+                const initializeApp = async () => {
+                    await loadSettings();
+                    await fetchServerInfo();
+                    fetchAppsStatus();
+                    fetchSystemMetrics();
+                    setLoading(false);
+                };
+                
+                initializeApp();
                 
                 const appsInterval = setInterval(fetchAppsStatus, 5000);
                 const metricsInterval = setInterval(fetchSystemMetrics, 5000);
+                const serverInfoInterval = setInterval(fetchServerInfo, 30000); // Less frequent
+                
+                // Listen for backend errors in Electron
+                if (window.electronAPI) {
+                    const handleBackendError = (event, errorMessage) => {
+                        setError(`Backend Error: ${errorMessage}`);
+                        setServerStatus('disconnected');
+                    };
+                    
+                    window.electronAPI.onBackendError(handleBackendError);
+                    
+                    return () => {
+                        clearInterval(appsInterval);
+                        clearInterval(metricsInterval);
+                        clearInterval(serverInfoInterval);
+                        window.electronAPI.removeBackendErrorListener(handleBackendError);
+                    };
+                }
                 
                 return () => {
                     clearInterval(appsInterval);
                     clearInterval(metricsInterval);
+                    clearInterval(serverInfoInterval);
                 };
-            }, []);
+            }, [settings.activeServerId]); // Re-run when active server changes
 
             const formatUptime = (seconds) => {
                 if (!seconds) return '00:00:00';
@@ -438,7 +1431,8 @@
                         )
                     );
 
-                    const response = await fetch(`http://${serverAddress}/api/apps/${appId}/${action}`, {
+                    const currentServerAddress = getServerAddress();
+                    const response = await fetch(`http://${currentServerAddress}/api/apps/${appId}/${action}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                     });
@@ -456,6 +1450,52 @@
                     setError(`Failed to ${action} ${appId}: ${err.message}`);
                     fetchAppsStatus();
                 }
+            };
+
+            const removeApp = async (appId, appName) => {
+                if (!confirm(`Are you sure you want to remove "${appName}" from the dashboard? This will stop the app if it's running.`)) {
+                    return;
+                }
+
+                try {
+                    const currentServerAddress = getServerAddress();
+                    const response = await fetch(`http://${currentServerAddress}/api/apps/config/${appId}`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        
+                        if (!result.success) {
+                            throw new Error(result.error || 'Failed to remove app');
+                        }
+
+                        // Refresh the apps list
+                        fetchAppsStatus();
+                        alert(`"${appName}" has been removed from the dashboard.`);
+                    } else if (response.status === 404) {
+                        alert('This server does not support removing apps remotely.');
+                    } else if (response.status === 400) {
+                        alert('Server Error: The remote server doesn\'t support app management. To remove apps remotely, you need to update the backend server.');
+                    } else {
+                        alert(`Server error: ${response.status} ${response.statusText}`);
+                    }
+                    
+                } catch (err) {
+                    console.error('Failed to remove app:', err);
+                    alert(`Failed to remove app: ${err.message}`);
+                }
+            };
+
+            const isLocalServer = () => {
+                const serverAddress = getServerAddress();
+                return serverAddress.startsWith('127.0.0.1:') || serverAddress.startsWith('localhost:');
+            };
+
+            const canManageApps = () => {
+                // For now, allow app management on any server but show warnings for remote servers
+                return true;
             };
 
             const getStatusIcon = (status) => {
@@ -497,12 +1537,29 @@
                     h('div', { className: "mb-8" },
                         h('div', { className: "flex items-center justify-between mb-6" },
                             h('div', null,
-                                h('h1', { className: "text-4xl font-bold text-white mb-2" }, 'App Dashboard'),
+                                h('h1', { className: "text-4xl font-bold text-white mb-2" }, 'NexRift Dashboard'),
                                 h('p', { className: "text-slate-300" }, 'Manage applications and monitor system health')
                             ),
                             h('div', { className: "flex items-center space-x-4" },
+                                canManageApps() && h('button', {
+                                    onClick: () => setShowAppManagement(true),
+                                    className: "flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors",
+                                    title: "Add Popular Apps"
+                                },
+                                    h(PlusIcon, { className: "w-4 h-4" }),
+                                    h('span', null, 'Add Apps')
+                                ),
+                                h('button', {
+                                    onClick: () => setShowSettings(true),
+                                    className: "flex items-center space-x-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors",
+                                    title: "Settings"
+                                },
+                                    h(SettingsIcon, { className: "w-4 h-4" }),
+                                    h('span', null, 'Settings')
+                                ),
                                 h('button', {
                                     onClick: () => {
+                                        fetchServerInfo();
                                         fetchAppsStatus();
                                         fetchSystemMetrics();
                                     },
@@ -511,12 +1568,31 @@
                                     h(RefreshIcon, { className: "w-4 h-4" }),
                                     h('span', null, 'Refresh')
                                 ),
-                                h('div', { className: "flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2" },
+                                h('div', { 
+                                    className: "flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2",
+                                    title: serverStatus === 'connecting' ? 'Connecting to server...' :
+                                           (serverInfo.hostname ? `${serverInfo.hostname} (${serverInfo.platform})` : 'Server Info')
+                                },
                                     h(ServerIcon, { className: "w-5 h-5 text-blue-400" }),
-                                    h('span', { className: "text-white font-medium" }, '192.168.1.227'),
+                                    h('div', { className: "flex flex-col" },
+                                        h('span', { className: "text-white font-medium text-sm" }, 
+                                            serverStatus === 'connecting' ? 'Connecting...' :
+                                            (currentServer ? currentServer.name : 'Unknown Server')
+                                        ),
+                                        serverInfo.hostname && h('span', { className: "text-slate-300 text-xs" }, 
+                                            serverInfo.hostname
+                                        )
+                                    ),
                                     h('div', { 
-                                        className: `w-3 h-3 rounded-full ${serverStatus === 'connected' ? 'bg-green-400' : 'bg-red-400'}`,
-                                        style: { animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
+                                        className: `w-3 h-3 rounded-full ${
+                                            serverStatus === 'connected' ? 'bg-green-400' : 
+                                            serverStatus === 'connecting' ? 'bg-yellow-400' : 'bg-red-400'
+                                        }`,
+                                        style: { 
+                                            animation: serverStatus === 'connecting' ? 
+                                                'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 
+                                                'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' 
+                                        }
                                     })
                                 )
                             )
@@ -563,9 +1639,41 @@
                                                         style: { color: '#60a5fa', fontSize: '24px' }
                                                     }, '⚡')
                                                 ),
-                                                h('div', null,
+                                                h('div', { className: "flex-1" },
                                                     h('h3', { className: "text-xl font-semibold text-white" }, app.name),
-                                                    h('p', { className: "text-slate-300 text-sm", style: { color: '#cbd5e1' } }, app.description)
+                                                    h('p', { className: "text-slate-300 text-sm", style: { color: '#cbd5e1' } }, app.description),
+                                                    // Computer name with connection status
+                                                    h('div', { 
+                                                        className: "flex items-center space-x-2 mt-2",
+                                                        style: { marginTop: '8px' }
+                                                    },
+                                                        h('div', { 
+                                                            className: `w-2 h-2 rounded-full ${
+                                                                serverStatus === 'connected' ? 'bg-green-400' : 
+                                                                serverStatus === 'connecting' ? 'bg-yellow-400' : 'bg-red-400'
+                                                            }`,
+                                                            style: { 
+                                                                width: '8px', 
+                                                                height: '8px', 
+                                                                borderRadius: '50%',
+                                                                backgroundColor: 
+                                                                    serverStatus === 'connected' ? '#4ade80' : 
+                                                                    serverStatus === 'connecting' ? '#fbbf24' : '#f87171',
+                                                                animation: serverStatus === 'connecting' ? 
+                                                                    'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none'
+                                                            }
+                                                        }),
+                                                        h('span', { 
+                                                            className: "text-slate-400 text-xs",
+                                                            style: { color: '#94a3b8', fontSize: '11px' }
+                                                        }, 
+                                                            app.server_hostname ? 
+                                                                `${app.server_hostname} (${app.server_ip || getServerAddress().split(':')[0]})` :
+                                                                (serverInfo.error ? 
+                                                                    `${currentServer?.name || 'Server'} (${getServerAddress().split(':')[0]}) - Offline` :
+                                                                    `${serverInfo.hostname || currentServer?.name || 'Unknown Host'} (${getServerAddress().split(':')[0]})`)
+                                                        )
+                                                    )
                                                 )
                                             ),
                                             h('div', { className: "flex items-center space-x-2" },
@@ -578,7 +1686,27 @@
                                                         padding: '4px 12px',
                                                         fontSize: '12px'
                                                     }
-                                                }, app.status.charAt(0).toUpperCase() + app.status.slice(1))
+                                                }, app.status.charAt(0).toUpperCase() + app.status.slice(1)),
+                                                canManageApps() && h('button', {
+                                                    onClick: () => removeApp(app.id, app.name),
+                                                    className: "ml-2 p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded",
+                                                    title: `Remove ${app.name}`,
+                                                    style: {
+                                                        marginLeft: '8px',
+                                                        padding: '4px',
+                                                        color: '#f87171',
+                                                        backgroundColor: 'transparent',
+                                                        border: 'none',
+                                                        borderRadius: '4px',
+                                                        cursor: 'pointer'
+                                                    },
+                                                    onMouseEnter: (e) => {
+                                                        e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                                                    },
+                                                    onMouseLeave: (e) => {
+                                                        e.target.style.backgroundColor = 'transparent';
+                                                    }
+                                                }, h(TrashIcon, { className: "w-4 h-4" }))
                                             )
                                         ),
 
@@ -612,8 +1740,13 @@
                                                     className: "text-green-400 font-mono text-sm",
                                                     style: { color: '#4ade80', fontFamily: 'monospace' }
                                                 }, formatUptime(app.uptime))
-                                            )
+                                            ),
                                         ),
+
+                                        // Resource usage widget for running apps
+                                        app.status === 'running' && app.resources && h(MiniResourceWidget, { 
+                                            resources: app.resources 
+                                        }),
 
                                         h('div', { className: "flex space-x-3" },
                                             h('button', {
@@ -673,12 +1806,12 @@
                                             h('p', { className: "text-green-400 text-sm", style: { color: '#4ade80' } },
                                                 'Application is accessible at: ',
                                                 h('a', {
-                                                    href: `http://192.168.1.227:${app.port}`,
+                                                    href: `http://${getServerAddress().split(':')[0]}:${app.port}`,
                                                     target: '_blank',
                                                     rel: 'noopener noreferrer',
                                                     className: "ml-2 underline hover:text-green-300",
                                                     style: { marginLeft: '8px', textDecoration: 'underline', color: '#4ade80' }
-                                                }, `192.168.1.227:${app.port}`)
+                                                }, `${getServerAddress().split(':')[0]}:${app.port}`)
                                             )
                                         )
                                     )
@@ -690,9 +1823,26 @@
                     // Footer
                     h('div', { className: "mt-12 text-center" },
                         h('p', { className: "text-slate-400 text-sm", style: { color: '#94a3b8' } },
-                            'Server Dashboard • Managing applications and monitoring system health on 192.168.1.227'
+                            `NexRift Dashboard • Connected to ${serverInfo.hostname || currentServer?.name || 'Unknown Server'}`
                         )
-                    )
+                    ),
+
+                    // Settings Modal
+                    h(SettingsModal, {
+                        isOpen: showSettings,
+                        onClose: () => setShowSettings(false),
+                        settings: settings,
+                        onSave: saveSettings
+                    }),
+
+                    // App Management Modal
+                    h(AppManagementModal, {
+                        isOpen: showAppManagement,
+                        onClose: () => setShowAppManagement(false),
+                        onRefresh: fetchAppsStatus,
+                        getServerAddress: getServerAddress,
+                        isLocalServer: isLocalServer
+                    })
                 )
             );
         };
