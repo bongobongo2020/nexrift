@@ -84,6 +84,17 @@ def load_app_configs():
                     'working_dir': 'D:/swarmui/swarmui',
                     'type': 'batch',
                     'output_folder': 'D:/swarmui/swarmui/Output'
+                },
+                'wan2gp': {
+                    'name': 'Wan2GP',
+                    'environment': 'wan2gp',
+                    'path': 'wgp.py',
+                    'args': [],
+                    'port': 7860,
+                    'description': 'Wan2GP Application',
+                    'working_dir': 'E:/projects/Wan2GP',
+                    'type': 'conda',
+                    'output_folder': 'E:/projects/Wan2GP/outputs'
                 }
             }
             logger.info(f"Created default configuration with {len(app_configs)} AI apps for {hostname}")
@@ -846,15 +857,27 @@ def remove_app_config(app_id):
 def get_app_templates():
     """Get popular app templates"""
     templates = {
+        'generic': {
+            'name': 'Generic Application',
+            'description': 'Custom application with configurable settings',
+            'type': 'conda',
+            'port': 7860,
+            'defaultPath': 'app.py',
+            'defaultArgs': [],
+            'outputFolder': 'outputs',
+            'environment': ''
+        },
         'comfyui': {
             'name': 'ComfyUI',
-            'description': 'UI for Stable Diffusion',
+            'description': 'UI for Stable Diffusion - Portable Windows Version',
             'type': 'executable',
             'port': 8188,
             'defaultPath': 'python_embeded/python.exe',
-            'defaultArgs': ['-s', 'ComfyUI/main.py', '--windows-standalone-build', '--fast', '--listen', '--enable-cors-header'],
-            'outputFolder': 'output',
-            'environment': None
+            'defaultArgs': ['ComfyUI/main.py', '--windows-standalone-build', '--fast', '--listen', '--enable-cors-header'],
+            'outputFolder': 'ComfyUI/output',
+            'environment': None,
+            'autoConfigurable': True,
+            'setupInstructions': 'Only specify the ComfyUI_windows_portable folder path. All other settings will be configured automatically.'
         },
         'chatterbox': {
             'name': 'Chatterbox',
@@ -898,6 +921,63 @@ def get_app_templates():
         }
     }
     return jsonify(templates)
+
+@app.route('/api/apps/<app_id>/config', methods=['GET'])
+def get_app_config(app_id):
+    """Get individual app configuration"""
+    try:
+        if app_id not in app_configs:
+            return jsonify({'success': False, 'error': f'App {app_id} not found'}), 404
+        
+        config = app_configs[app_id].copy()
+        return jsonify({'success': True, 'config': config})
+    
+    except Exception as e:
+        logger.error(f"Error getting app config for {app_id}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/apps/config/<app_id>', methods=['PUT'])
+def update_app_config(app_id):
+    """Update existing app configuration"""
+    try:
+        if app_id not in app_configs:
+            return jsonify({'success': False, 'error': f'App {app_id} not found'}), 404
+        
+        data = request.get_json()
+        if not data or 'config' not in data:
+            return jsonify({'success': False, 'error': 'No config data provided'}), 400
+        
+        config = data['config']
+        
+        # Validate required fields
+        required_fields = ['name', 'working_dir', 'path', 'port', 'type']
+        for field in required_fields:
+            if field not in config:
+                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+        
+        # Update the configuration
+        app_configs[app_id].update(config)
+        
+        # If app is running, stop it since config changed
+        if app_id in running_processes:
+            try:
+                process = running_processes[app_id]
+                if process.poll() is None:  # Process is still running
+                    process.terminate()
+                    del running_processes[app_id]
+                    logger.info(f"Stopped {app_id} due to config update")
+            except Exception as e:
+                logger.warning(f"Error stopping {app_id} after config update: {e}")
+        
+        # Save configurations to file
+        save_app_configs()
+        
+        logger.info(f"Updated app configuration for {app_id}")
+        return jsonify({'success': True, 'message': 'App configuration updated successfully'})
+    
+    except Exception as e:
+        logger.error(f"Error updating app config for {app_id}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     logger.info("Starting Python App Management Server with System Monitoring...")

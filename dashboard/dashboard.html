@@ -284,19 +284,10 @@
         };
 
         // App Management Modal Component
-        const AppManagementModal = ({ isOpen, onClose, onRefresh, getServerAddress, isLocalServer }) => {
+        const AppManagementModal = ({ isOpen, onClose, onRefresh, getServerAddress, isLocalServer, editMode, editAppId, appConfig, setAppConfig }) => {
             const [templates, setTemplates] = useState({});
             const [loading, setLoading] = useState(false);
             const [selectedTemplate, setSelectedTemplate] = useState('');
-            const [appConfig, setAppConfig] = useState({
-                name: '',
-                description: '',
-                working_dir: '',
-                path: '',
-                port: 8000,
-                environment: '',
-                type: 'executable'
-            });
 
             useEffect(() => {
                 if (isOpen) {
@@ -315,6 +306,16 @@
                         console.warn('Templates endpoint not available on this server');
                         // Provide fallback templates
                         setTemplates({
+                            'generic': {
+                                'name': 'Generic Application',
+                                'description': 'Custom application with configurable settings',
+                                'type': 'conda',
+                                'port': 7860,
+                                'defaultPath': 'app.py',
+                                'defaultArgs': [],
+                                'outputFolder': 'outputs',
+                                'environment': ''
+                            },
                             'comfyui': {
                                 'name': 'ComfyUI',
                                 'description': 'UI for Stable Diffusion',
@@ -351,6 +352,16 @@
                     console.error('Failed to fetch templates:', err);
                     // Provide fallback templates for offline/error scenarios
                     setTemplates({
+                        'generic': {
+                            'name': 'Generic Application',
+                            'description': 'Custom application with configurable settings',
+                            'type': 'conda',
+                            'port': 7860,
+                            'defaultPath': 'app.py',
+                            'defaultArgs': [],
+                            'outputFolder': 'outputs',
+                            'environment': ''
+                        },
                         'comfyui': {
                             'name': 'ComfyUI',
                             'description': 'UI for Stable Diffusion',
@@ -392,16 +403,28 @@
                 }
             };
 
-            const addApp = async () => {
-                if (!appConfig.name || !appConfig.working_dir || !appConfig.path) {
-                    alert('Please fill in all required fields (Name, Working Directory, Path)');
+            // Check if current template is auto-configurable (like ComfyUI)
+            const isAutoConfigurable = () => {
+                if (!selectedTemplate || !templates[selectedTemplate]) return false;
+                return templates[selectedTemplate].autoConfigurable === true;
+            };
+
+            const saveApp = async () => {
+                // Check required fields - path not required for auto-configurable templates
+                const pathRequired = !isAutoConfigurable();
+                if (!appConfig.name || !appConfig.working_dir || (pathRequired && !appConfig.path)) {
+                    const missingFields = [];
+                    if (!appConfig.name) missingFields.push('Name');
+                    if (!appConfig.working_dir) missingFields.push(isAutoConfigurable() && selectedTemplate === 'comfyui' ? 'ComfyUI Portable Folder Path' : 'Working Directory');
+                    if (pathRequired && !appConfig.path) missingFields.push('Executable Path');
+                    alert(`Please fill in all required fields: ${missingFields.join(', ')}`);
                     return;
                 }
 
                 setLoading(true);
                 try {
                     const serverAddress = getServerAddress();
-                    const appId = appConfig.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    const appId = editMode ? editAppId : appConfig.name.toLowerCase().replace(/[^a-z0-9]/g, '');
                     
                     const config = {
                         name: appConfig.name,
@@ -417,32 +440,40 @@
                         config.args = appConfig.args;
                     }
 
-                    const response = await fetch(`http://${serverAddress}/api/apps/config`, {
-                        method: 'POST',
+                    const url = editMode 
+                        ? `http://${serverAddress}/api/apps/config/${appId}`
+                        : `http://${serverAddress}/api/apps/config`;
+                    const method = editMode ? 'PUT' : 'POST';
+                    const body = editMode 
+                        ? JSON.stringify({ config })
+                        : JSON.stringify({ id: appId, config });
+
+                    const response = await fetch(url, {
+                        method: method,
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: appId, config })
+                        body: body
                     });
 
                     if (response.ok) {
                         const result = await response.json();
                         if (result.success) {
-                            alert('App added successfully!');
+                            alert(editMode ? 'App updated successfully!' : 'App added successfully!');
                             onRefresh();
                             onClose();
                             resetForm();
                         } else {
-                            alert(`Failed to add app: ${result.error}`);
+                            alert(`Failed to ${editMode ? 'update' : 'add'} app: ${result.error}`);
                         }
                     } else if (response.status === 404) {
-                        alert('This server does not support adding apps remotely. Please add apps directly to the backend configuration.');
+                        alert(`This server does not support ${editMode ? 'editing' : 'adding'} apps remotely.`);
                     } else if (response.status === 400) {
-                        alert(`Server Error: ${response.status} - The remote server doesn't support app management. To add apps remotely, you need to update the backend server with the latest app_manager.py that includes the new API endpoints.`);
+                        alert(`Server Error: ${response.status} - The remote server doesn't support app management.`);
                     } else {
                         alert(`Server error: ${response.status} ${response.statusText}`);
                     }
                 } catch (err) {
-                    console.error('Failed to add app:', err);
-                    alert('Failed to add app. Check connection to backend.');
+                    console.error(`Failed to ${editMode ? 'update' : 'add'} app:`, err);
+                    alert(`Failed to ${editMode ? 'update' : 'add'} app. Check connection to backend.`);
                 } finally {
                     setLoading(false);
                 }
@@ -495,7 +526,7 @@
                         h('h2', { 
                             className: "text-2xl font-bold text-white",
                             style: { color: 'white', fontSize: '24px', fontWeight: 'bold' }
-                        }, 'App Management'),
+                        }, editMode ? 'Edit App' : 'Add Apps'),
                         h('button', {
                             onClick: onClose,
                             className: "text-gray-400 hover:text-white",
@@ -529,8 +560,8 @@
                         )
                     ),
 
-                    // Templates Section
-                    h('div', { className: "mb-6" },
+                    // Templates Section - only show when adding new apps
+                    !editMode && h('div', { className: "mb-6" },
                         h('h3', { 
                             className: "text-lg font-semibold text-white mb-4",
                             style: { color: 'white', fontSize: '18px', fontWeight: '600', marginBottom: '16px' }
@@ -593,6 +624,30 @@
                             style: { color: 'white', fontSize: '18px', fontWeight: '600', marginBottom: '16px' }
                         }, 'Configure App'),
                         
+                        // Special instructions for auto-configurable apps
+                        isAutoConfigurable() && h('div', {
+                            className: "mb-4 p-3 bg-blue-900/30 border border-blue-500/50 rounded-lg",
+                            style: {
+                                marginBottom: '16px',
+                                padding: '12px',
+                                backgroundColor: 'rgba(30, 58, 138, 0.3)',
+                                border: '1px solid rgba(59, 130, 246, 0.5)',
+                                borderRadius: '8px'
+                            }
+                        },
+                            h('div', { className: "flex items-center space-x-2 mb-2" },
+                                h('span', { style: { fontSize: '16px' } }, '💡'),
+                                h('span', { 
+                                    className: "text-blue-300 font-medium",
+                                    style: { color: '#93c5fd', fontWeight: '500' }
+                                }, 'Auto-Configuration Enabled')
+                            ),
+                            h('p', { 
+                                className: "text-blue-100 text-sm",
+                                style: { color: '#dbeafe', fontSize: '14px' }
+                            }, templates[selectedTemplate]?.setupInstructions || 'This app will be configured automatically based on your folder path.')
+                        ),
+                        
                         h('div', { className: "grid grid-cols-1 md:grid-cols-2 gap-4" },
                             // Name
                             h('div', null,
@@ -634,13 +689,19 @@
                             
                             // Working Directory
                             h('div', { className: "md:col-span-2" },
-                                h('label', { className: "block text-white mb-2" }, 'Working Directory *'),
+                                h('label', { className: "block text-white mb-2" }, 
+                                    isAutoConfigurable() && selectedTemplate === 'comfyui' 
+                                        ? 'ComfyUI Portable Folder Path *' 
+                                        : 'Working Directory *'
+                                ),
                                 h('div', { className: "flex space-x-2" },
                                     h('input', {
                                         type: 'text',
                                         value: appConfig.working_dir,
                                         onChange: (e) => setAppConfig({ ...appConfig, working_dir: e.target.value }),
-                                        placeholder: 'C:/path/to/app/folder',
+                                        placeholder: isAutoConfigurable() && selectedTemplate === 'comfyui' 
+                                            ? 'E:/path/to/ComfyUI_windows_portable' 
+                                            : 'C:/path/to/app/folder',
                                         className: "flex-1 bg-slate-600 text-white rounded px-3 py-2",
                                         style: {
                                             backgroundColor: '#475569',
@@ -676,8 +737,8 @@
                                 )
                             ),
                             
-                            // Executable Path
-                            h('div', { className: "md:col-span-2" },
+                            // Executable Path (hidden for auto-configurable templates)
+                            !isAutoConfigurable() && h('div', { className: "md:col-span-2" },
                                 h('label', { className: "block text-white mb-2" }, 'Executable Path *'),
                                 h('input', {
                                     type: 'text',
@@ -696,8 +757,8 @@
                                 })
                             ),
                             
-                            // Environment (optional)
-                            h('div', null,
+                            // Environment (optional) - hidden for executable-only templates
+                            !(isAutoConfigurable() && selectedTemplate === 'comfyui') && h('div', null,
                                 h('label', { className: "block text-white mb-2" }, 'Environment (optional)'),
                                 h('input', {
                                     type: 'text',
@@ -737,18 +798,18 @@
                             }
                         }, 'Cancel'),
                         selectedTemplate && h('button', {
-                            onClick: addApp,
-                            disabled: loading || !appConfig.name || !appConfig.working_dir || !appConfig.path,
+                            onClick: saveApp,
+                            disabled: loading || !appConfig.name || !appConfig.working_dir || (!isAutoConfigurable() && !appConfig.path),
                             className: "px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-500",
                             style: {
                                 padding: '8px 16px',
-                                backgroundColor: loading || !appConfig.name || !appConfig.working_dir || !appConfig.path ? '#6b7280' : '#16a34a',
+                                backgroundColor: loading || !appConfig.name || !appConfig.working_dir || (!isAutoConfigurable() && !appConfig.path) ? '#6b7280' : '#16a34a',
                                 color: 'white',
                                 borderRadius: '6px',
                                 border: 'none',
-                                cursor: loading || !appConfig.name || !appConfig.working_dir || !appConfig.path ? 'not-allowed' : 'pointer'
+                                cursor: loading || !appConfig.name || !appConfig.working_dir || (!isAutoConfigurable() && !appConfig.path) ? 'not-allowed' : 'pointer'
                             }
-                        }, loading ? 'Adding...' : 'Add App')
+                        }, loading ? (editMode ? 'Updating...' : 'Adding...') : (editMode ? 'Update App' : 'Add App'))
                     )
                 )
             );
@@ -1246,6 +1307,18 @@
             const [isElectron, setIsElectron] = useState(false);
             const [showSettings, setShowSettings] = useState(false);
             const [showAppManagement, setShowAppManagement] = useState(false);
+            const [editMode, setEditMode] = useState(false);
+            const [editAppId, setEditAppId] = useState(null);
+            const [appConfig, setAppConfig] = useState({
+                name: '',
+                description: '',
+                working_dir: '',
+                path: '',
+                port: 7860,
+                environment: '',
+                type: 'conda',
+                args: []
+            });
             const [settings, setSettings] = useState({
                 servers: [
                     { id: 'local', name: 'Local Server', address: '127.0.0.1:8000', active: true },
@@ -1488,6 +1561,47 @@
                 }
             };
 
+            const editApp = async (appId, appName) => {
+                try {
+                    const currentServerAddress = getServerAddress();
+                    const response = await fetch(`http://${currentServerAddress}/api/apps/${appId}/config`, {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' },
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        
+                        if (result.success && result.config) {
+                            // Set edit mode and populate form with existing data
+                            setEditMode(true);
+                            setEditAppId(appId);
+                            setAppConfig({
+                                name: result.config.name || appName,
+                                description: result.config.description || '',
+                                working_dir: result.config.working_dir || '',
+                                path: result.config.path || '',
+                                port: result.config.port || 7860,
+                                environment: result.config.environment || '',
+                                type: result.config.type || 'conda',
+                                args: result.config.args || []
+                            });
+                            setShowAppManagement(true);
+                        } else {
+                            throw new Error(result.error || 'Failed to fetch app configuration');
+                        }
+                    } else if (response.status === 404) {
+                        alert('This server does not support editing apps remotely.');
+                    } else {
+                        alert(`Server error: ${response.status} ${response.statusText}`);
+                    }
+                    
+                } catch (err) {
+                    console.error('Failed to edit app:', err);
+                    alert(`Failed to edit app: ${err.message}`);
+                }
+            };
+
             const isLocalServer = () => {
                 const serverAddress = getServerAddress();
                 return serverAddress.startsWith('127.0.0.1:') || serverAddress.startsWith('localhost:');
@@ -1688,6 +1802,26 @@
                                                     }
                                                 }, app.status.charAt(0).toUpperCase() + app.status.slice(1)),
                                                 canManageApps() && h('button', {
+                                                    onClick: () => editApp(app.id, app.name),
+                                                    className: "ml-2 p-1 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded",
+                                                    title: `Edit ${app.name}`,
+                                                    style: {
+                                                        marginLeft: '8px',
+                                                        padding: '4px',
+                                                        color: '#60a5fa',
+                                                        backgroundColor: 'transparent',
+                                                        border: 'none',
+                                                        borderRadius: '4px',
+                                                        cursor: 'pointer'
+                                                    },
+                                                    onMouseEnter: (e) => {
+                                                        e.target.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+                                                    },
+                                                    onMouseLeave: (e) => {
+                                                        e.target.style.backgroundColor = 'transparent';
+                                                    }
+                                                }, h(SettingsIcon, { className: "w-4 h-4" })),
+                                                canManageApps() && h('button', {
                                                     onClick: () => removeApp(app.id, app.name),
                                                     className: "ml-2 p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded",
                                                     title: `Remove ${app.name}`,
@@ -1838,10 +1972,28 @@
                     // App Management Modal
                     h(AppManagementModal, {
                         isOpen: showAppManagement,
-                        onClose: () => setShowAppManagement(false),
+                        onClose: () => {
+                            setShowAppManagement(false);
+                            setEditMode(false);
+                            setEditAppId(null);
+                            setAppConfig({
+                                name: '',
+                                description: '',
+                                working_dir: '',
+                                path: '',
+                                port: 7860,
+                                environment: '',
+                                type: 'conda',
+                                args: []
+                            });
+                        },
                         onRefresh: fetchAppsStatus,
                         getServerAddress: getServerAddress,
-                        isLocalServer: isLocalServer
+                        isLocalServer: isLocalServer,
+                        editMode: editMode,
+                        editAppId: editAppId,
+                        appConfig: appConfig,
+                        setAppConfig: setAppConfig
                     })
                 )
             );
